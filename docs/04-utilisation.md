@@ -38,7 +38,7 @@ On peut aussi ajouter un prospect à la main (cockpit ou MCP).
 
 https://claude.ai/artifact/BFT3Pjiq2m8MEDcKbLg54k
 
-Pour tester une idée de formulation, vérifier un cas délicat ou former un nouveau membre de l'équipe. Chaque avis (« Juste », « À revoir » avec un commentaire) et chaque essai enregistré est conservé avec la version du prompt : il suffit de demander à Claude de « relire les avis du Labo » pour qu'il corrige le prompt en conséquence.
+Pour tester une idée de formulation, vérifier un cas délicat, voir à quoi ressemble l'ébauche qu'un prospect découvrirait pendant l'appel, ou former un nouveau membre de l'équipe. Chaque avis (« Juste », « À revoir » avec un commentaire) et chaque essai enregistré est conservé avec la version du prompt : il suffit de demander à Claude de « relire les avis du Labo » pour qu'il corrige le prompt en conséquence.
 
 ## Piloter le moteur depuis Claude (MCP)
 

@@ -37,7 +37,7 @@ flowchart LR
 | Prospection assistée : registre des entreprises, flux d'actualité, score, accroches | Prête |
 | Alertes : Telegram, email, webhook ; bilan hebdomadaire ; alerte de budget IA | Prêtes |
 | Serveur MCP (12 outils) | Prêt |
-| Labo Nova (test de l'IA dans Claude, avis enregistrés) | Publié |
+| Labo Nova (test de l'IA dans Claude, ébauche générée par Opus, avis enregistrés) | Publié |
 | Déploiement : Dockerfile, docker-compose (moteur, Postgres, HTTPS), diagnostic `npm run doctor` | Prêt |
 | Connexion au compte Instagram | À faire avec l'équipe : [guide](docs/02-connexion-instagram.md) |
 

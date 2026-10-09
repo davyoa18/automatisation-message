@@ -9,6 +9,7 @@ Le **Labo Nova** fait répondre Nova avec le prompt de production, dans Claude, 
 - 9 prospects simulés (fondatrice qui a levé des fonds, coach, étudiant sans budget, commerçant qui trouve ça cher, démarcheur, petit malin qui essaie de piéger l'IA…), ou « Jouer moi-même ».
 - La fiche, l'étape, le score et la fenêtre de 24 h d'Instagram se mettent à jour en direct.
 - « Le prospect ne répond pas » simule les relances (+3 h, puis +21 h).
+- Quand Nova lance l'ébauche, « Générer l'ébauche avec Opus 5.5 » produit le brief et les 3 écrans iPhone de l'app du prospect, exactement comme le moteur, et les affiche en grand.
 - « Comparer avec Opus 5.5 » montre la réponse de l'autre modèle sur le même message.
 - Les boutons « Juste » / « À revoir » et « Enregistrer l'essai » gardent tes retours : Claude les relit pour corriger le prompt.
 

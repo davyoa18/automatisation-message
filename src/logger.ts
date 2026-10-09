@@ -2,9 +2,15 @@ type Level = "debug" | "info" | "warn" | "error";
 const ORDER: Record<Level, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 
 let threshold: Level = (process.env.LOG_LEVEL as Level) || "info";
+let allToStderr = false;
 
 export function setLogLevel(level: Level): void {
   threshold = level;
+}
+
+/** En mode MCP stdio, la sortie standard est réservée au protocole : tous les journaux passent sur stderr. */
+export function logToStderrOnly(): void {
+  allToStderr = true;
 }
 
 function write(level: Level, msg: string, data?: Record<string, unknown>): void {
@@ -16,7 +22,7 @@ function write(level: Level, msg: string, data?: Record<string, unknown>): void 
     }
   }
   const out = JSON.stringify(line);
-  if (level === "error" || level === "warn") process.stderr.write(out + "\n");
+  if (allToStderr || level === "error" || level === "warn") process.stderr.write(out + "\n");
   else process.stdout.write(out + "\n");
 }
 

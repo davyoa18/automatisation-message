@@ -21,7 +21,10 @@
     "prospects:scan": "tsx src/prospects/cli.ts",
     "studio:import": "tsx src/studio/import-site.ts",
     "labo:build": "tsx scripts/build-labo.ts",
-    "db:migrate": "tsx src/db/migrate-cli.ts"
+    "db:migrate": "tsx src/db/migrate-cli.ts",
+    "demo": "tsx scripts/demo.ts",
+    "doctor": "tsx scripts/doctor.ts",
+    "render:prompt": "tsx scripts/render-prompt.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

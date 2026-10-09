@@ -1,0 +1,44 @@
+# Déploiement autonome sur un serveur (VPS) : moteur + Postgres + HTTPS automatique (Caddy).
+#   1. Pointer le domaine (ex. moteur.yd-studio.fr) vers l'IP du serveur.
+#   2. Copier .env.example en .env et le remplir (DATABASE_URL est fourni ci-dessous).
+#   3. DOMAINE=moteur.yd-studio.fr docker compose up -d
+services:
+  moteur:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://moteur:${POSTGRES_PASSWORD:-change-moi}@postgres:5432/moteur
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: moteur
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-moi}
+      POSTGRES_DB: moteur
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moteur"]
+      interval: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${DOMAINE:-localhost} --to moteur:3000
+    volumes:
+      - caddy:/data
+    depends_on:
+      - moteur
+
+volumes:
+  pgdata:
+  caddy:

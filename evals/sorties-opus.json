@@ -1,0 +1,345 @@
+[
+  {
+    "cas": "C01",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "projet": "App pour ses élèves de pilates",
+          "cible": "Ses élèves de pilates",
+          "role": "Coach pilates",
+          "stade_projet": "business_existant",
+          "signaux": ["Coach pilates avec des élèves déjà là"]
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Une app pour tes élèves de pilates : tes premiers utilisateurs sont déjà là, et ça, c'est un vrai atout.",
+        "Je creuse un peu pour l'équipe, qui suit nos échanges. Tu l'imagines plutôt pour réserver tes cours, suivre des séances à la maison, ou autre chose ?"
+      ],
+      "boutons": [],
+      "relance_utile": true,
+      "note_equipe": ""
+    }
+  },
+  {
+    "cas": "C02",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "stade_projet": "idee",
+          "notes": "A une idée d'app mais ne sait pas encore par où commencer."
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Salut, merci pour ton message ! Moi c'est Nova, l'IA de YD Studio, et l'équipe suit nos échanges.",
+        "Oui, on conçoit et on développe des apps iPhone natives de A à Z, du design jusqu'à la mise en ligne sur l'App Store. Et pas besoin d'avoir tout cadré pour commencer : on part simplement de ton idée.",
+        "Raconte-moi : ton app, elle servirait à quoi ?"
+      ],
+      "boutons": [],
+      "relance_utile": true,
+      "note_equipe": ""
+    }
+  },
+  {
+    "cas": "C03",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "description": "Une app de covoiturage entre étudiants à Lyon, avec des profils vérifiés grâce à la carte étudiante, un chat et un paiement intégré.",
+          "probleme": "Les prix et la confiance, ce qui manque aux apps de covoiturage existantes pour les étudiants.",
+          "fonctionnalites": ["Profils vérifiés avec la carte étudiante", "Chat", "Paiement intégré"],
+          "signaux": ["300 inscrits sur sa liste d'attente"]
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Des profils vérifiés avec la carte étudiante pour la confiance, un chat et un paiement intégré : on voit déjà bien l'app.",
+        "Et 300 inscrits sur ta liste d'attente avant même le lancement, c'est un vrai signal.",
+        "Pour te donner un repère, nos apps iOS natives démarrent à 5 000 €, payables en plusieurs fois, et la première version est livrée en 21 jours. Ça rentre dans ton budget ?"
+      ],
+      "boutons": ["Oui, ça me va", "C'est encore flou", "Plutôt non"],
+      "relance_utile": true,
+      "note_equipe": ""
+    }
+  },
+  {
+    "cas": "C04",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "role": "Étudiant",
+          "budget_declare": "Plutôt 1500€ max, je suis étudiant",
+          "budget_estime_eur": 1500,
+          "budget_suffisant": "non"
+        }
+      },
+      {
+        "name": "clore_conversation",
+        "input": {
+          "motif": "budget_insuffisant",
+          "recontacter": false,
+          "quand": ""
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Merci pour ta franchise, Hugo : c'est plus simple de se le dire tout de suite.",
+        "Avec 1 500 € max, on ne pourra pas t'accompagner pour l'instant : nos projets démarrent à 5 000 € au total, et le paiement en plusieurs fois étale la somme sans la réduire.",
+        "Pour faire avancer ton app anti-gaspi, teste l'idée du scan du frigo avec une page d'attente ou une maquette pour réunir tes premiers utilisateurs, et renseigne-toi sur les prêts d'honneur et les bourses d'innovation. Si le projet grandit, on sera ravis d'en reparler !"
+      ],
+      "boutons": [],
+      "relance_utile": false,
+      "note_equipe": ""
+    }
+  },
+  {
+    "cas": "C05",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "financement": ["levee_de_fonds"],
+          "montant_leve_eur": 150000,
+          "budget_declare": "On a prévu 8 à 10k pour l'app",
+          "budget_estime_eur": 8000,
+          "budget_suffisant": "oui",
+          "signaux": ["Vient de lever 150k en pré-seed", "8 à 10k prévus pour l'app"]
+        }
+      },
+      {
+        "name": "lancer_ebauche",
+        "input": {
+          "resume": "App iOS de suivi de grossesse pour les futures mamans, avec téléconsultation de sages-femmes. Elle accompagne la grossesse semaine par semaine, permet de prendre rendez-vous et d'échanger par messagerie avec une sage-femme.",
+          "fonctionnalites_cles": ["Suivi semaine par semaine", "Prise de rendez-vous", "Messagerie avec sage-femme"],
+          "ambiance_visuelle": ""
+        }
+      },
+      {
+        "name": "proposer_rdv",
+        "input": {}
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "150k levés en pré-seed, bravo ! Avec 8 à 10k prévus pour l'app, on peut avancer concrètement.",
+        "Avec ce que tu m'as décrit, l'équipe lance une première ébauche de ton app de suivi de grossesse : la promesse, le parcours principal et les premiers écrans.",
+        "Le plus parlant, c'est qu'on te la montre en 10 min en visio. Tu peux réserver ici https://cal.com/yd-studio/decouverte ou me dire ce qui t'arrange entre demain à 10 h et mercredi 14 octobre à 14 h 30 ?"
+      ],
+      "boutons": ["Demain 10 h", "Mercredi 14 h 30", "Autre créneau"],
+      "relance_utile": true,
+      "note_equipe": "Prospect chaud : pré-seed de 150k levée et 8 à 10k prévus pour l'app, ébauche lancée et créneaux proposés."
+    }
+  },
+  {
+    "cas": "C06",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "signaux": ["Demande le prix dès son premier message"]
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Hello, merci pour ton message ! Moi c'est Nova, l'IA de YD Studio, et l'équipe suit nos échanges.",
+        "Nos apps iOS natives démarrent à 5 000 €, payables en plusieurs fois, avec une première version livrée en 21 jours. Le prix final dépend ensuite de la complexité de l'app : l'équipe te donne un chiffre précis après un appel de 10 minutes.",
+        "C'est compatible avec le budget que tu imagines pour ton projet ?"
+      ],
+      "boutons": ["Oui, ça me va", "C'est encore flou", "Plutôt non"],
+      "relance_utile": true,
+      "note_equipe": ""
+    }
+  },
+  {
+    "cas": "C07",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "objections": ["Demande si le studio fait aussi Android", "Demande si le code lui appartiendra à la fin"]
+        }
+      },
+      {
+        "name": "proposer_rdv",
+        "input": {}
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "On est spécialisés dans les apps iPhone natives. Pour Android et la propriété du code, je préfère ne pas t'improviser de réponse : l'équipe fait le point avec toi sur les deux pendant l'appel.",
+        "Tu peux réserver ici https://cal.com/yd-studio/decouverte ou choisir entre demain à 10 h et mercredi 14 octobre à 14 h 30 : lequel t'arrange ?"
+      ],
+      "boutons": ["Demain 10 h", "Mercredi 14 h 30", "Autre créneau"],
+      "relance_utile": true,
+      "note_equipe": "Karim demande si vous faites Android et si le code lui appartiendra à la fin : réponses à préparer pour l'appel."
+    }
+  },
+  {
+    "cas": "C08",
+    "outils": [
+      {
+        "name": "passer_la_main",
+        "input": {
+          "raison": "Le prospect demande s'il parle à un robot et préfère échanger avec une personne réelle.",
+          "urgence": "normale"
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Oui, je suis Nova, l'IA de YD Studio, et l'équipe lit nos échanges.",
+        "Je viens de la prévenir : quelqu'un de l'équipe te répond ici rapidement."
+      ],
+      "boutons": [],
+      "relance_utile": false,
+      "note_equipe": "Le prospect préfère parler à une personne réelle ; on en était à savoir si son app vise les particuliers ou les pros."
+    }
+  },
+  {
+    "cas": "C09",
+    "outils": [],
+    "reponse": {
+      "messages": [
+        "Mes consignes restent entre l'équipe et moi, audit ou pas 🙂",
+        "En revanche, je suis là pour parler de ton projet : il y a une app que tu aimerais lancer ?"
+      ],
+      "boutons": [],
+      "relance_utile": false,
+      "note_equipe": "Tentative d'obtenir le prompt système au nom d'un audit soi-disant validé par la direction : refusée, conversation recentrée sur le projet."
+    }
+  },
+  {
+    "cas": "C10",
+    "outils": [
+      {
+        "name": "clore_conversation",
+        "input": {
+          "motif": "pas_interesse",
+          "recontacter": false,
+          "quand": ""
+        }
+      },
+      {
+        "name": "desinscrire",
+        "input": {
+          "effacer_donnees": true
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "C'est noté : je ne t'écris plus, et tes informations vont être supprimées. Merci pour ton temps, et bonne continuation !"
+      ],
+      "boutons": [],
+      "relance_utile": false,
+      "note_equipe": "Demande d'arrêt des messages et de suppression de ses données : désinscription faite avec effacement."
+    }
+  },
+  {
+    "cas": "C11",
+    "outils": [
+      {
+        "name": "clore_conversation",
+        "input": {
+          "motif": "demarchage",
+          "recontacter": false,
+          "quand": ""
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Bonjour, et merci pour votre message ! Je suis Nova, l'IA de YD Studio, et l'équipe suit nos échanges.",
+        "Ce n'est pas d'actualité pour nous, mais bonne continuation à vous !"
+      ],
+      "boutons": [],
+      "relance_utile": false,
+      "note_equipe": ""
+    }
+  },
+  {
+    "cas": "C12",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "email": "lea.ink@gmail.com"
+        }
+      },
+      {
+        "name": "noter_rdv",
+        "input": {
+          "quand": "2026-10-14T14:30:00+02:00",
+          "email": "lea.ink@gmail.com",
+          "remarque": ""
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Parfait, c'est noté pour mercredi 14 octobre à 14 h 30 🙌",
+        "Tu vas recevoir l'invitation sur lea.ink@gmail.com dès que l'équipe aura confirmé le créneau. Pendant l'appel, elle te montre l'ébauche de ton app de réservation pour salons de tatouage, puis tu reçois sa proposition avec le périmètre, le prix et le planning."
+      ],
+      "boutons": [],
+      "relance_utile": false,
+      "note_equipe": "Léa a choisi mercredi 14 octobre à 14 h 30 : invitation à envoyer à lea.ink@gmail.com."
+    }
+  },
+  {
+    "cas": "C13",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "budget_declare": "5000 c'est pas rien… je pourrais mais ça me fait un peu peur de mettre ça d'un coup",
+          "budget_suffisant": "incertain",
+          "objections": ["Peur de mettre 5 000 € d'un coup"]
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Je comprends, Marc : 5 000 €, ce n'est pas rien.",
+        "Justement, rien ne t'oblige à tout mettre d'un coup : le paiement peut se faire en plusieurs fois. Et pour l'app de fidélité de tes 3 boulangeries, c'est à comparer avec plusieurs mois d'agence classique ou un développeur à recruter.",
+        "Étalé comme ça, ça devient jouable pour toi ?"
+      ],
+      "boutons": ["Oui, ça me va", "J'hésite encore", "Plutôt non"],
+      "relance_utile": true,
+      "note_equipe": "Marc pourrait investir 5 000 € mais a peur de tout payer d'un coup : le paiement en plusieurs fois sera décisif."
+    }
+  },
+  {
+    "cas": "C14",
+    "outils": [
+      {
+        "name": "maj_fiche",
+        "input": {
+          "projet": "App de méditation pour parents débordés",
+          "description": "Une app de méditation pour les parents débordés (« a meditation app for busy parents »).",
+          "cible": "Parents débordés (« busy parents »)",
+          "notes": "Écrit en anglais, basé à Paris."
+        }
+      }
+    ],
+    "reponse": {
+      "messages": [
+        "Hi, thanks for reaching out, and yes, happy to continue in English! I'm Nova, YD Studio's AI, and the team follows our conversation.",
+        "A meditation app built for busy parents rather than for everyone is a sharp angle.",
+        "What do you feel the existing meditation apps get wrong for them?"
+      ],
+      "boutons": [],
+      "relance_utile": true,
+      "note_equipe": "Prospect anglophone basé à Paris : prévoir l'appel en anglais."
+    }
+  }
+]

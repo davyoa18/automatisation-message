@@ -33,11 +33,11 @@ const FRAME_CSS = `
 *{box-sizing:border-box} html,body{margin:0;padding:0;background:transparent}
 .phone{width:418px;height:872px;border-radius:64px;background:#0b0b0d;padding:14px;box-shadow:0 30px 60px rgba(0,0,0,.28), inset 0 0 0 2px #2a2a2e}
 .screen{position:relative;width:390px;height:844px;border-radius:50px;overflow:hidden;background:#fff}
-.statusbar{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 32px 0 40px;font:600 16px -apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;z-index:20;pointer-events:none}
+.statusbar{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 32px 0 40px;font:600 16px -apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;z-index:20;pointer-events:none;color:#fff!important;mix-blend-mode:difference}
 .island{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000}
 .icons{display:flex;gap:6px;align-items:center}
 .content{position:absolute;inset:0;overflow:hidden}
-.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:3px;opacity:.85;z-index:20}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:3px;opacity:.85;z-index:20;background:#fff!important;mix-blend-mode:difference}
 `;
 
 function boardHtml(phones: string[], brief: EbaucheBrief, studioName: string, blur: boolean): string {

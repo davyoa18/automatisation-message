@@ -29,13 +29,18 @@ export async function getOrCreateConversation(
     [contactId],
   );
   if (existing) return { conversation: existing, created: false };
+  // Deux messages simultanés d'un nouveau contact : l'index unique garde une seule conversation ouverte.
   const row = await db.one<Conversation>(
     `INSERT INTO conversations (id, contact_id, channel, source, source_ref)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (contact_id) WHERE status = 'ouverte' DO NOTHING
+     RETURNING *`,
     [newId(), contactId, channel, source, sourceRef],
   );
-  if (!row) throw new Error("Création de la conversation impossible");
-  return { conversation: row, created: true };
+  if (row) return { conversation: row, created: true };
+  const winner = await db.one<Conversation>("SELECT * FROM conversations WHERE contact_id = $1 AND status = 'ouverte' LIMIT 1", [contactId]);
+  if (!winner) throw new Error("Création de la conversation impossible");
+  return { conversation: winner, created: false };
 }
 
 export async function touchInbound(db: Db, id: string, at: Date): Promise<void> {

@@ -26,6 +26,8 @@ Il suffit de répondre depuis l'app Instagram du studio : le moteur reconnaît q
 
 Nova passe elle-même la main quand la personne demande un humain, négocie le prix, se plaint, ou pose une question bloquante qu'elle ne sait pas traiter.
 
+**Réservation par le lien.** Quand un prospect réserve directement avec le lien Calendly ou Cal.com, le moteur ne le voit pas : passe-le en « RDV pris » dans le cockpit (ou demande-le à Claude par MCP). Les relances s'arrêtent aussitôt. Passer un contact en « Désinscrit » coupe de même tout message automatique.
+
 ## La prospection assistée
 
 Chaque matin à 7 h 30, le moteur repère des prospects dans des sources publiques : entreprises créées récemment en France (registre officiel des entreprises) et actualité des levées de fonds (flux RSS à choisir dans `PROSPECTS_RSS`). L'IA leur donne un score et rédige une accroche personnalisée.

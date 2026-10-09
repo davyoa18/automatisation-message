@@ -101,10 +101,9 @@ export function createMcpServer(app: App, opts: { workerRunning: boolean }): Mcp
 
   server.registerTool(
     "changer_etape",
-    { description: "Change l'étape d'un lead dans le pipeline (par exemple « gagne » quand le contrat est signé, « rdv_pris » quand l'appel est confirmé).", inputSchema: { contact_id: z.string(), etape: z.enum(STAGES) } },
+    { description: "Change l'étape d'un lead dans le pipeline (par exemple « gagne » quand le contrat est signé, « rdv_pris » quand l'appel est confirmé, ce qui arrête les relances). « desinscrit » coupe tout message automatique.", inputSchema: { contact_id: z.string(), etape: z.enum(STAGES) } },
     async ({ contact_id, etape }) => {
-      await updateLead(db, contact_id, { stage: etape as Stage });
-      await logEvent(db, etape === "gagne" ? "signe" : "etape_manuelle", { etape, via: "mcp" }, { contactId: contact_id });
+      await app.engine.setStageManually(contact_id, etape as Stage, "mcp");
       return text(`Étape mise à jour : ${etape}.`);
     },
   );

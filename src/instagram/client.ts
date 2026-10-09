@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Db } from "../db/client.js";
 import { getSetting, setSetting } from "../db/repo/misc.js";
 import { log } from "../logger.js";
@@ -39,8 +40,20 @@ export class IgError extends Error {
   ) {
     super(message);
   }
+  /** Limite de débit : Meta la renvoie souvent avec un statut 400. Il faut réessayer plus tard. */
+  get isRateLimit(): boolean {
+    return [4, 17, 32, 613, 80002, 80006].includes(this.code ?? -1) || this.status === 429;
+  }
+  get isAuth(): boolean {
+    return this.code === 190 || this.status === 401;
+  }
+  /** Erreur passagère côté Meta (inconnue ou service indisponible) : à réessayer. */
+  get isTransient(): boolean {
+    return this.isRateLimit || this.code === 1 || this.code === 2 || this.status >= 500;
+  }
   /** Fenêtre de 24 h fermée ou destinataire injoignable : inutile de réessayer. */
   get isPermanent(): boolean {
+    if (this.isTransient || this.isAuth) return false;
     return (
       this.code === 10 ||
       this.code === 551 ||
@@ -50,12 +63,6 @@ export class IgError extends Error {
       this.subcode === 2534025 ||
       this.status === 400
     );
-  }
-  get isRateLimit(): boolean {
-    return this.code === 4 || this.code === 613 || this.code === 32 || this.status === 429;
-  }
-  get isAuth(): boolean {
-    return this.code === 190 || this.status === 401;
   }
 }
 
@@ -73,10 +80,17 @@ export class GraphMessenger implements Messenger {
     this.base = `https://${opts.host}/${opts.version}`;
   }
 
+  /** Empreinte du jeton fourni dans la configuration, pour savoir de quel jeton dérive un jeton renouvelé. */
+  private envFingerprint(): string {
+    return createHash("sha256").update(this.opts.accessToken).digest("hex").slice(0, 16);
+  }
+
   private async token(): Promise<string> {
     if (this.opts.db) {
-      const stored = await getSetting<{ token: string; expires_at?: string }>(this.opts.db, "ig_token");
-      if (stored?.token) return stored.token;
+      const stored = await getSetting<{ token: string; expires_at?: string; source?: string }>(this.opts.db, "ig_token");
+      // Un jeton renouvelé n'est utilisé que s'il dérive du jeton actuel du .env : si l'équipe a
+      // remplacé IG_ACCESS_TOKEN (jeton révoqué, nouveau compte), c'est le nouveau qui compte.
+      if (stored?.token && (!stored.source || stored.source === this.envFingerprint())) return stored.token;
     }
     return this.opts.accessToken;
   }
@@ -88,6 +102,7 @@ export class GraphMessenger implements Messenger {
       method,
       headers: { Authorization: `Bearer ${await this.token()}`, "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(20_000),
     });
     const text = await res.text();
     let json: Record<string, unknown> = {};
@@ -206,7 +221,7 @@ export class GraphMessenger implements Messenger {
     const url = new URL(`https://${this.opts.host}/refresh_access_token`);
     url.searchParams.set("grant_type", "ig_refresh_token");
     url.searchParams.set("access_token", await this.token());
-    const res = await this.fetchImpl(url);
+    const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(20_000) });
     const json = (await res.json()) as { access_token?: string; expires_in?: number; error?: { message?: string } };
     if (!res.ok || !json.access_token) throw new Error(json.error?.message ?? `Renouvellement du jeton impossible (HTTP ${res.status})`);
     if (this.opts.db) {
@@ -214,6 +229,7 @@ export class GraphMessenger implements Messenger {
         token: json.access_token,
         expires_at: new Date(Date.now() + (json.expires_in ?? 5_184_000) * 1000).toISOString(),
         refreshed_at: new Date().toISOString(),
+        source: this.envFingerprint(),
       });
     }
     return { token: json.access_token, expiresInSec: json.expires_in ?? 0 };

@@ -59,15 +59,30 @@ export async function conversationHistory(db: Db, conversationId: string, limit 
 }
 
 export async function markSent(db: Db, id: string, externalId: string | null, at: Date): Promise<void> {
-  await db.query("UPDATE messages SET status = 'envoye', external_id = COALESCE($2, external_id), sent_at = $3, error = NULL WHERE id = $1", [
-    id,
-    externalId,
-    at,
-  ]);
+  // L'écho du message peut avoir déjà enregistré cet identifiant sur la même ligne : on ne le duplique pas.
+  await db.query(
+    `UPDATE messages SET status = 'envoye', sent_at = $3, error = NULL,
+       external_id = CASE WHEN $2::text IS NULL OR EXISTS (SELECT 1 FROM messages o WHERE o.external_id = $2::text AND o.id <> $1)
+                          THEN external_id ELSE $2::text END
+     WHERE id = $1`,
+    [id, externalId, at],
+  );
+}
+
+/** Ce que le prospect a réellement vu : messages reçus, et messages envoyés avec succès. */
+export function isDelivered(m: Pick<Message, "direction" | "status">): boolean {
+  return m.direction === "entrant" ? m.status !== "annule" : m.status === "envoye";
 }
 
 export async function markFailed(db: Db, id: string, error: string): Promise<void> {
   await db.query("UPDATE messages SET status = 'echec', error = $2 WHERE id = $1", [id, error]);
+}
+
+/** Annule les messages d'un lot qui n'étaient pas encore partis. */
+export async function cancelMessages(db: Db, ids: string[]): Promise<number> {
+  if (!ids.length) return 0;
+  const rows = await db.query<{ id: string }>("UPDATE messages SET status = 'annule' WHERE id = ANY($1::text[]) AND status = 'planifie' RETURNING id", [ids]);
+  return rows.length;
 }
 
 export async function cancelPlannedMessages(db: Db, conversationId: string): Promise<number> {

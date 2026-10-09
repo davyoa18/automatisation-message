@@ -3,7 +3,8 @@ import { advanceStage, computeScore, computeTemperature, deriveBudgetStatus, mer
 import { planDelivery, profileFor, totalDurationMs } from "../src/engine/pacing.js";
 import { canSendAutomated, relanceFits } from "../src/engine/window.js";
 import { parseWebhook, verifySignature } from "../src/instagram/webhook.js";
-import { matchCommentRule } from "../src/engine/engine.js";
+import { matchCommentRule, OPT_OUT } from "../src/engine/engine.js";
+import { IgError } from "../src/instagram/client.js";
 import { sanitizeButtons, sanitizeMessages, historyToTurns } from "../src/ai/agent.js";
 import { ensureDisclosure, hasDisclosure, relanceRequest } from "../src/ai/conversation-context.js";
 import { ficheAdvice, lenientFiche } from "../src/ai/tool-logic.js";
@@ -116,6 +117,27 @@ describe("webhooks Instagram", () => {
     expect(matchCommentRule(rules, "je veux la maquette !", null)?.id).toBe("r");
     expect(matchCommentRule(rules, "App 🔥", "M1")?.id).toBe("r");
     expect(matchCommentRule(rules, "happy day", null)).toBeNull();
+  });
+});
+
+describe("désinscription et erreurs Instagram", () => {
+  it("ne désinscrit que sur une demande d'arrêt explicite et complète", () => {
+    for (const t of ["STOP", "stop !", "Stop.", "stop svp", "Arrête de m'écrire", "arrêtez de m'écrire merci", "Ne m'écris plus", "laisse-moi tranquille !", "désinscris-moi", "unsubscribe"]) {
+      expect(OPT_OUT.test(t), t).toBe(true);
+    }
+    for (const t of ["Arrête, c'est trop bien !", "Arrête j'adore 😍", "Stop motion c'est faisable ?", "Arrête !", "stop ou encore ?", "je veux arrêter mon abonnement salle de sport"]) {
+      expect(OPT_OUT.test(t), t).toBe(false);
+    }
+  });
+
+  it("réessaie les limites de débit même renvoyées en 400, abandonne les refus définitifs", () => {
+    const rate = new IgError("(#4) Application request limit reached", 4, null, 400);
+    expect(rate.isRateLimit && rate.isTransient && !rate.isPermanent).toBe(true);
+    const window = new IgError("Outside of allowed window", 10, 2018278, 400);
+    expect(window.isPermanent && !window.isTransient).toBe(true);
+    const auth = new IgError("Invalid OAuth access token", 190, null, 400);
+    expect(auth.isAuth && !auth.isPermanent).toBe(true);
+    expect(new IgError("An unknown error occurred", 1, null, 500).isTransient).toBe(true);
   });
 });
 

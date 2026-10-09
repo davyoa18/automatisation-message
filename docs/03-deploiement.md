@@ -51,6 +51,8 @@ Commencer avec `DRY_RUN=true` (rien n'est envoyé sur Instagram), vérifier les 
 
 Programmer la sauvegarde chaque nuit avec `crontab -e`, et copier les fichiers hors du serveur (stockage objet, ou disque de l'équipe).
 
+Faire tourner **une seule instance** du moteur : c'est elle qui garantit qu'un prospect ne reçoit jamais deux réponses en parallèle. Une mise à jour ou un redémarrage est sans risque : les tâches en cours sont rendues à la file et reprennent au démarrage suivant.
+
 ## Option sans serveur à gérer : Railway ou Render
 
 1. Créer un service à partir du dépôt GitHub : le `Dockerfile` est détecté.

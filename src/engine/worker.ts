@@ -1,6 +1,6 @@
 import type { Db } from "../db/client.js";
 import type { Job } from "../domain.js";
-import { claimNext, completeJob, failJob, requeueStale } from "../db/repo/jobs.js";
+import { claimNext, completeJob, failJob, heartbeatJobs, releaseJobs, requeueStale } from "../db/repo/jobs.js";
 import { logEvent } from "../db/repo/misc.js";
 import { addMs, errorMessage, sleep, type Clock } from "../util/index.js";
 import { log } from "../logger.js";
@@ -8,7 +8,10 @@ import { log } from "../logger.js";
 export type JobHandler = (job: Job) => Promise<void>;
 
 const BACKOFF_MS = [30_000, 2 * 60_000, 10 * 60_000, 30 * 60_000];
-const MAX_ATTEMPTS = 5;
+export const MAX_ATTEMPTS = 5;
+/** Signe de vie des tâches en cours, et délai au-delà duquel une tâche sans signe de vie est reprise. */
+const HEARTBEAT_MS = 30_000;
+const STALE_AFTER_MS = 3 * 60_000;
 
 /**
  * Exécute les tâches de la file (en base) : plusieurs en parallèle, avec reprise après
@@ -19,6 +22,8 @@ export class Worker {
   private active = 0;
   private loop: Promise<void> | null = null;
   private lastStaleCheck = 0;
+  private owned = new Set<string>();
+  private heartbeat: NodeJS.Timeout | null = null;
 
   constructor(
     private db: Db,
@@ -31,12 +36,26 @@ export class Worker {
     if (this.running) return;
     this.running = true;
     this.loop = this.run();
+    this.heartbeat = setInterval(() => {
+      void heartbeatJobs(this.db, [...this.owned], this.clock.now()).catch((err) => log.warn("signe de vie des tâches", { error: errorMessage(err) }));
+    }, HEARTBEAT_MS);
   }
 
-  async stop(): Promise<void> {
+  /**
+   * Arrêt propre : plus de nouvelle tâche, on laisse finir celles en cours quelques secondes,
+   * puis on rend les autres à la file (elles reprendront au redémarrage, sans attendre).
+   */
+  async stop(graceMs = 8_000): Promise<void> {
     this.running = false;
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat = null;
     await this.loop;
-    while (this.active > 0) await sleep(50);
+    const deadline = Date.now() + graceMs;
+    while (this.active > 0 && Date.now() < deadline) await sleep(50);
+    if (this.owned.size) {
+      const n = await releaseJobs(this.db, [...this.owned]).catch(() => 0);
+      if (n) log.info("tâches rendues à la file avant l'arrêt", { n });
+    }
   }
 
   private async run(): Promise<void> {
@@ -47,7 +66,7 @@ export class Worker {
         const now = this.clock.now();
         if (now.getTime() - this.lastStaleCheck > 60_000) {
           this.lastStaleCheck = now.getTime();
-          const n = await requeueStale(this.db, addMs(now, -15 * 60_000));
+          const n = await requeueStale(this.db, addMs(now, -STALE_AFTER_MS));
           if (n) log.warn("tâches bloquées remises en file", { n });
         }
         let claimed = false;
@@ -70,6 +89,7 @@ export class Worker {
 
   async execute(job: Job): Promise<void> {
     const started = Date.now();
+    this.owned.add(job.id);
     try {
       await this.handler(job);
       await completeJob(this.db, job.id);
@@ -80,6 +100,8 @@ export class Worker {
       await failJob(this.db, job.id, msg, retry);
       log.warn("tâche en échec", { type: job.type, attempts: job.attempts, retry: !!retry, error: msg });
       if (!retry) await logEvent(this.db, "tache_abandonnee", { type: job.type, error: msg, payload: job.payload });
+    } finally {
+      this.owned.delete(job.id);
     }
   }
 

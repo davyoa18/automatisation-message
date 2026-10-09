@@ -33,6 +33,17 @@ describe("serveur HTTP", () => {
     expect(app.ig.sent.map((s) => s.text)).toEqual(["Moi c'est Nova, l'IA de YD Studio. Ton projet ?"]);
   });
 
+  it("demande à Meta de renvoyer un webhook dont le traitement a échoué", async () => {
+    app = await makeApp(() => [], { NODE_ENV: "production", COCKPIT_PASSWORD: "x", SESSION_SECRET: "y".repeat(32) });
+    const web = createServer(app, { workerRunning: false });
+    (app.engine as unknown as { onInbound: () => Promise<never> }).onInbound = async () => {
+      throw new Error("base de données indisponible");
+    };
+    const body = JSON.stringify(igMessageWebhook("U8", "mid.8", "Bonjour", app.fakeClock.now().getTime()));
+    const res = await web.request("/webhooks/instagram", { method: "POST", body, headers: { "x-hub-signature-256": `sha256=${hmacSha256Hex("secret", body)}` } });
+    expect(res.status).toBe(500);
+  });
+
   it("protège le cockpit par mot de passe en production", async () => {
     app = await makeApp(() => [], { NODE_ENV: "production", COCKPIT_PASSWORD: "motdepasse", SESSION_SECRET: "z".repeat(32) });
     const web = createServer(app, { workerRunning: false });

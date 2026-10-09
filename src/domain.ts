@@ -161,6 +161,8 @@ export interface Job {
   id: string;
   type: JobType;
   dedupe_key: string | null;
+  /** File d'exécution (conversation) : ses tâches tournent une par une. */
+  lane: string | null;
   payload: Record<string, unknown>;
   run_at: Date;
   status: "en_attente" | "en_cours" | "fait" | "echec" | "annule";

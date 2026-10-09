@@ -214,4 +214,27 @@ CREATE TABLE comment_replies (
 );
 `,
   },
+  {
+    id: "002_files_par_conversation",
+    sql: /* sql */ `
+-- Une seule tâche EN ATTENTE par clé : une tâche peut tourner pendant que la suivante attend.
+DROP INDEX IF EXISTS jobs_dedupe_active;
+CREATE UNIQUE INDEX jobs_dedupe_pending ON jobs (dedupe_key) WHERE dedupe_key IS NOT NULL AND status = 'en_attente';
+CREATE INDEX jobs_dedupe_running ON jobs (dedupe_key) WHERE dedupe_key IS NOT NULL AND status = 'en_cours';
+
+-- File par conversation : deux tâches qui écrivent au même prospect ne tournent jamais en même temps.
+ALTER TABLE jobs ADD COLUMN lane text;
+UPDATE jobs SET lane = 'conv:' || (payload->>'conversationId')
+ WHERE type IN ('repondre', 'envoyer', 'relancer') AND payload ? 'conversationId';
+CREATE INDEX jobs_lane_running ON jobs (lane) WHERE lane IS NOT NULL AND status = 'en_cours';
+
+-- Une seule conversation ouverte par contact (deux webhooks simultanés en créaient deux).
+UPDATE conversations c SET status = 'fermee', updated_at = now()
+ WHERE c.status = 'ouverte' AND EXISTS (
+   SELECT 1 FROM conversations d
+    WHERE d.contact_id = c.contact_id AND d.status = 'ouverte'
+      AND (d.created_at > c.created_at OR (d.created_at = c.created_at AND d.id > c.id)));
+CREATE UNIQUE INDEX conversations_one_open ON conversations (contact_id) WHERE status = 'ouverte';
+`,
+  },
 ];

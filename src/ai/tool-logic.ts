@@ -108,3 +108,13 @@ export function parseRdvDate(quand: string, now: Date): Date | null {
   const parsed = Date.parse(quand);
   return Number.isFinite(parsed) && parsed > now.getTime() ? new Date(parsed) : null;
 }
+
+/**
+ * Actions laissées à l'équipe par les outils (rendez-vous à confirmer, réponse humaine, effacement
+ * RGPD, recontact daté) : l'analyse automatique ne doit jamais les remplacer.
+ */
+const TEAM_ACTION_PREFIXES = ["Confirmer l'appel", "Répondre à la main", "Effacer les données", "Recontacter"];
+
+export function isTeamAction(nextAction: string | null | undefined): boolean {
+  return !!nextAction && TEAM_ACTION_PREFIXES.some((p) => nextAction.startsWith(p));
+}

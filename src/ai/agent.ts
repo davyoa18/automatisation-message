@@ -55,7 +55,9 @@ export async function runAgent(input: AgentInput, deps: AgentDeps): Promise<Agen
   const { cfg, studio, llm } = deps;
   const model = cfg.AI_MODEL_CONVERSATION;
   const tools = agentTools(studio);
-  const isFirstAiMessage = !input.history.some((m) => m.direction === "sortant" && m.author === "ia" && m.status !== "annule");
+  // Seul ce que le prospect a reçu compte : une bulle en échec ou annulée ne l'a pas présentée.
+  const delivered = input.history.filter((m) => (m.direction === "entrant" ? m.status !== "annule" : m.status === "envoye"));
+  const isFirstAiMessage = !delivered.some((m) => m.direction === "sortant" && m.author === "ia");
   const rt: ToolRuntime = {
     db: deps.db,
     cfg,
@@ -69,7 +71,7 @@ export async function runAgent(input: AgentInput, deps: AgentDeps): Promise<Agen
   };
 
   const system = studio.prompt("conversation");
-  const turns = historyToTurns(input.history, input.conversation);
+  const turns = historyToTurns(delivered, input.conversation);
   if (!turns.length || turns[turns.length - 1]!.role !== "user") {
     turns.push({ role: "user", content: "[Aucun nouveau message : relis la conversation et réponds seulement si c'est utile.]" });
   }

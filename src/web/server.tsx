@@ -84,7 +84,9 @@ export function createServer(app: App, opts: { workerRunning: boolean }): Hono {
     }
     const events = parseWebhook(body);
     // Meta attend une réponse rapide : le traitement lourd (IA, envoi) passe par la file de tâches.
-    await app.engine.handleEvents(events);
+    // En cas d'échec, une erreur 500 fait renvoyer le webhook par Meta (les doublons sont écartés).
+    const { failed } = await app.engine.handleEvents(events);
+    if (failed) return c.text("Traitement incomplet, merci de renvoyer", 500);
     return c.text("EVENT_RECEIVED");
   });
 
@@ -205,10 +207,7 @@ export function createServer(app: App, opts: { workerRunning: boolean }): Hono {
     const form = await c.req.parseBody();
     const stage = String(form.etape ?? "");
     const contactId = c.req.param("contactId");
-    if (STAGES.includes(stage as Stage)) {
-      await updateLead(db, contactId, { stage: stage as Stage, ...(stage === "rdv_pris" ? { next_action: null } : {}) });
-      await logEvent(db, stage === "gagne" ? "signe" : "etape_manuelle", { etape: stage }, { contactId });
-    }
+    if (STAGES.includes(stage as Stage)) await app.engine.setStageManually(contactId, stage as Stage, "cockpit");
     const conv = await latestConversationForContact(db, contactId);
     return c.redirect(conv ? `/cockpit/conversations/${conv.id}` : "/cockpit/conversations");
   });

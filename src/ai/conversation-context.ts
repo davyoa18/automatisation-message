@@ -177,7 +177,8 @@ export type TranscriptMessage = Pick<Message, "direction" | "author" | "text" | 
 /** Transcription lisible d'une conversation (relances, analyse). */
 export function transcriptOf(history: TranscriptMessage[], assistantName: string, tz = "Europe/Paris"): string {
   return history
-    .filter((m) => m.status !== "annule" && (m.text ?? "").trim())
+    // Seulement ce que le prospect a vraiment reçu : ni bulle annulée, ni envoi en échec ou en attente.
+    .filter((m) => (m.direction === "entrant" ? m.status !== "annule" : m.status === "envoye") && (m.text ?? "").trim())
     .map((m) => {
       const who = m.direction === "entrant" ? "Prospect" : m.author === "humain" ? "Équipe" : m.author === "ia" ? assistantName : "Système";
       const when = formatParis(new Date(m.created_at), tz);

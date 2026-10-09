@@ -33,15 +33,17 @@ export async function upsertContact(
     }
     return { contact: existing, created: false };
   }
-  const row = await db.one<Contact>(
+  const row = await db.one<Contact & { inserted: boolean }>(
     `INSERT INTO contacts (id, channel, external_id, username, name)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (channel, external_id) DO UPDATE SET updated_at = now()
-     RETURNING *`,
+     RETURNING *, (xmax = 0) AS inserted`,
     [newId(), channel, externalId, init.username ?? null, init.name ?? null],
   );
   if (!row) throw new Error("Création du contact impossible");
-  return { contact: row, created: true };
+  // Deux webhooks simultanés : un seul des deux crée vraiment le contact.
+  const { inserted, ...contact } = row;
+  return { contact: contact as Contact, created: inserted === true };
 }
 
 export async function updateContactProfile(

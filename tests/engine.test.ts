@@ -3,7 +3,7 @@ import { fake, type LlmRequest } from "../src/ai/llm.js";
 import { parseWebhook } from "../src/instagram/webhook.js";
 import { getLead } from "../src/db/repo/leads.js";
 import { conversationHistory } from "../src/db/repo/messages.js";
-import { upsertCommentRule, listEvents } from "../src/db/repo/misc.js";
+import { upsertCommentRule, listEvents, recordUsage } from "../src/db/repo/misc.js";
 import { findContactByExternal } from "../src/db/repo/contacts.js";
 import { latestConversationForContact } from "../src/db/repo/conversations.js";
 import { hasToolResults, igMessageWebhook, lastUserText, makeApp, type TestApp } from "./helpers.js";
@@ -203,5 +203,18 @@ describe("moteur de conversation", () => {
     await app.worker.drain();
     expect(app.ig.sent).toHaveLength(0);
     expect(app.sandboxMessenger.sent).toHaveLength(1);
+  });
+
+  it("alerte l'équipe une seule fois par mois quand le budget IA est dépassé", async () => {
+    app = await makeApp(() => [], { AI_MONTHLY_BUDGET_USD: "5" });
+    await recordUsage(app.db, { purpose: "conversation", model: "claude-sonnet-5-5", input_tokens: 1, output_tokens: 1, cache_read_tokens: 0, cache_write_tokens: 0, cost_usd: 6.5 });
+    await app.scheduler.tick();
+    await app.worker.drain();
+    app.fakeClock.advance(11 * 60_000);
+    await app.scheduler.tick();
+    await app.worker.drain();
+    const alerts = app.notes.sent.filter((n) => n.kind === "budget_ia");
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.title).toBe("Budget IA dépassé : 6.50 $ ce mois-ci");
   });
 });

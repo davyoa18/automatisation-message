@@ -12,9 +12,16 @@ function parisParts(d: Date, tz: string): { date: string; hhmm: string; weekday:
   return { date: `${g("year")}-${g("month")}-${g("day")}`, hhmm: `${g("hour")}:${g("minute")}`, weekday: g("weekday") };
 }
 
-/** Tâches périodiques : scan des prospects, bilan hebdomadaire, renouvellement du jeton Instagram. */
+/** Dépense d'IA depuis une date (table llm_usage). */
+async function aiSpendSince(db: Db, since: Date): Promise<number> {
+  const row = await db.one<{ c: number }>("SELECT coalesce(sum(cost_usd), 0)::float AS c FROM llm_usage WHERE created_at >= $1", [since]);
+  return Number(row?.c ?? 0);
+}
+
+/** Tâches périodiques : scan des prospects, bilan hebdomadaire, alerte de budget IA, renouvellement du jeton Instagram. */
 export class Scheduler {
   private timer: NodeJS.Timeout | null = null;
+  private lastBudgetCheck = 0;
 
   constructor(
     private db: Db,
@@ -44,6 +51,7 @@ export class Scheduler {
         await setSetting(this.db, "last_digest", p.date);
         await enqueue(this.db, "notifier", { kind: "bilan", digest: true }, { runAt: now, dedupeKey: `digest:${p.date}` });
       }
+      await this.checkAiBudget(now, p.date.slice(0, 7));
       if (this.graph) {
         const last = await getSetting<{ refreshed_at?: string }>(this.db, "ig_token");
         const lastAt = last?.refreshed_at ? Date.parse(last.refreshed_at) : 0;
@@ -61,5 +69,28 @@ export class Scheduler {
     } catch (err) {
       log.error("planificateur", { error: err });
     }
+  }
+
+  /** Une alerte par mois quand la dépense d'IA dépasse AI_MONTHLY_BUDGET_USD (le moteur continue de répondre). */
+  private async checkAiBudget(now: Date, month: string): Promise<void> {
+    const budget = this.cfg.AI_MONTHLY_BUDGET_USD;
+    if (!budget || now.getTime() - this.lastBudgetCheck < 10 * 60_000) return;
+    this.lastBudgetCheck = now.getTime();
+    if ((await getSetting<string>(this.db, "budget_ia_alerte")) === month) return;
+    const spent = await aiSpendSince(this.db, new Date(`${month}-01T00:00:00Z`));
+    if (spent < budget) return;
+    await setSetting(this.db, "budget_ia_alerte", month);
+    await enqueue(
+      this.db,
+      "notifier",
+      {
+        kind: "budget_ia",
+        title: `Budget IA dépassé : ${spent.toFixed(2)} $ ce mois-ci`,
+        body: `Le plafond mensuel est de ${budget} $ (AI_MONTHLY_BUDGET_USD). Le moteur continue de répondre : vérifiez les coûts dans le cockpit, ou relevez le plafond.`,
+        urgent: true,
+      },
+      { runAt: now, dedupeKey: `budget_ia:${month}` },
+    );
+    log.warn("budget IA mensuel dépassé", { spent, budget });
   }
 }

@@ -1,42 +1,76 @@
-# automatisation-message
+# Moteur DM de YD Studio
 
-Moteur maison d'automatisation des DM Instagram : une IA qui accueille, qualifie et relance les personnes intéressées par une application, sans ManyChat et dans les règles d'Instagram.
+Le moteur maison des DM Instagram de YD Studio : **Nova**, une IA qui accueille les personnes qui écrivent au studio, comprend leur projet d'app, vérifie le budget, fait préparer une première ébauche de leur app et cale un appel de 10 minutes avec l'équipe. Sans ManyChat, sans n8n, et dans les règles d'Instagram.
 
-> **Statut : cadrage.** Questionnaire en cours (65 questions, réponses lisibles par Claude) : https://claude.ai/artifact/KvscPJYpqortLYZGGroG1f
+- **Tester l'IA tout de suite** (dans Claude, sans clé ni installation) : [Labo Nova](https://claude.ai/artifact/BFT3Pjiq2m8MEDcKbLg54k)
+- **Voir le cockpit avec des données fictives** : `npm install && npm run demo`, puis http://localhost:3999/cockpit
+- **Documentation** : [docs/](docs/01-demarrage.md)
 
-## Ce que fait le système
+## Comment ça marche
 
-- **Moteur entrant.** Commentaire → DM, réponses aux stories, lien direct vers les DM (bio, QR code), questions d'accueil, publicités « Envoyer un message ». L'IA répond en quelques secondes, 24 h/24.
-- **Moteur sortant assisté.** Repérage et score de prospects à partir de sources publiques et légales. L'IA rédige une accroche personnalisée, envoyée à la main, puis prend le relais quand le prospect répond.
-- **Moteur de suivi.** Mémoire par contact, récupération de l'email ou d'un rendez-vous pendant la fenêtre de 24 h, relances dans les règles, contenus de réactivation.
-- **Cockpit.** Prospects chauds, conversations en cours, reprise en main, liste du jour, alertes.
+```mermaid
+flowchart LR
+  P["Prospect sur Instagram"] -- "DM, commentaire, story, publicité" --> W["Webhooks Meta"]
+  W --> M["Moteur DM"]
+  M <--> N["Nova (Claude Sonnet 5.5)"]
+  N -- "outils" --> F[("Fiche, étape, score")]
+  M --> E["Ébauche de l'app (Claude Opus 5.5)"]
+  M -- "réponses au rythme humain, relances dans les 24 h" --> P
+  M --> C["Cockpit de l'équipe"]
+  M --> A["Alertes Telegram ou email"]
+  M <--> X["MCP : piloter depuis Claude"]
+  R["Registre des entreprises, actualité des levées"] --> PA["Prospection assistée"] --> C
+```
 
-Trois master prompts pilotent l'IA : **avant** (recherche, score, accroche), **pendant** (découverte, budget, estimation, maquette, rendez-vous) et **après** (résumé, score, prochaine action, brouillons de relance).
+1. **Avant** : chaque matin, le moteur repère des prospects dans des sources publiques, leur donne un score et rédige une accroche ; un humain l'envoie depuis l'app.
+2. **Pendant** : Nova répond aux DM, aux commentaires « APP », aux réponses de stories et aux publicités. Elle se présente comme une IA, découvre le projet, pose la question du budget (à partir de 5 000 €, en plusieurs fois), lance l'ébauche et propose l'appel. Le rythme est humain : regroupement des messages, lecture, indicateur de saisie, bulles courtes.
+3. **Après** : relances utiles dans la fenêtre de 24 h, résumé de chaque conversation pour l'équipe, relance manuelle prête à copier, bilan chaque lundi.
+
+## Ce qui est prêt
+
+| Partie | État |
+| --- | --- |
+| Nova : prompt maître v2, base de connaissances du studio, 7 outils, score et fiche prospect | Prêt, évalué à l'aveugle (Sonnet 123/140, Opus 124/140, Haiku 118/140) |
+| Moteur : webhooks signés, file de tâches, rythme d'envoi, fenêtre de 24 h, relances, reprise par un humain | Prêt et testé |
+| Ébauches : brief et 3 écrans iPhone générés par Opus 5.5, rendus en image | Prêt |
+| Cockpit : tableau de bord, conversations, prospects, ébauches, bac à sable, réglages | Prêt |
+| Prospection assistée : registre des entreprises, flux d'actualité, score, accroches | Prête |
+| Alertes : Telegram, email, webhook ; bilan hebdomadaire ; alerte de budget IA | Prêtes |
+| Serveur MCP (12 outils) | Prêt |
+| Labo Nova (test de l'IA dans Claude, avis enregistrés) | Publié |
+| Déploiement : Dockerfile, docker-compose (moteur, Postgres, HTTPS), diagnostic `npm run doctor` | Prêt |
+| Connexion au compte Instagram | À faire avec l'équipe : [guide](docs/02-connexion-instagram.md) |
+
+Tests : `npm test` (base de données, moteur de bout en bout, HTTP, logique de l'IA, Labo).
+
+## Ce qu'il faut pour passer en production
+
+1. Une clé API Claude (console.anthropic.com) avec un plafond de dépense.
+2. L'app Meta et le jeton du compte Instagram du studio : [guide pas à pas](docs/02-connexion-instagram.md).
+3. Un petit serveur (5 à 10 € par mois) et le sous-domaine `moteur.yd-studio.fr` : [guide](docs/03-deploiement.md).
+4. Le lien de réservation de l'appel de 10 minutes (Calendly ou Cal.com).
+5. Un canal d'alertes (bot Telegram conseillé).
+6. Une section « Messages Instagram et IA » dans la politique de confidentialité du site.
+
+Puis `npm run doctor` pour tout vérifier, une semaine en `DRY_RUN=true`, et c'est parti.
 
 ## Règles non négociables
 
-1. API officielle de Meta uniquement : pas de connexion par mot de passe, pas de scraping, pas de premier message automatique à un inconnu.
-2. Messages automatiques seulement dans les fenêtres autorisées : 24 h après le dernier message du prospect, et un seul message privé par commentaire, dans les 7 jours.
-3. L'IA se présente comme une IA (AI Act, article 50, applicable depuis le 2 août 2026) et passe la main à un humain dès qu'on le lui demande.
-4. RGPD : données professionnelles uniquement, droit d'opposition dans chaque échange, durée de conservation définie.
+1. **API officielle de Meta uniquement** : pas de mot de passe, pas de scraping, pas d'abonnement ni de premier DM automatique à un inconnu.
+2. **Messages automatiques seulement quand c'est permis** : dans les 24 h qui suivent le dernier message de la personne, et un seul DM par commentaire.
+3. **Nova dit qu'elle est une IA** (AI Act, article 50) et passe la main à un humain dès qu'on le demande.
+4. **RGPD** : données minimales, opposition et effacement à tout moment.
 
-## Architecture cible (à confirmer après le questionnaire)
+Le détail et les raisons : [docs/06-regles-et-conformite.md](docs/06-regles-et-conformite.md).
 
-```
-Instagram (webhooks) ──► API du moteur ──► Claude (API Anthropic) + master prompts
-                              │
-                              ├── Base de données : contacts, conversations, scores, fenêtres de 24 h
-                              ├── File de tâches : relances dans la fenêtre, rendu des maquettes
-                              └── Cockpit web + alertes
-```
+## Documentation
 
-- Stack proposée : TypeScript et Postgres sur un petit serveur toujours allumé. Le code vit dans ce dépôt ; pas de n8n au cœur du moteur.
-- Une tâche planifiée Claude Code relit chaque semaine les conversations et propose des améliorations des master prompts.
+1. [Démarrer](docs/01-demarrage.md)
+2. [Connecter Instagram](docs/02-connexion-instagram.md)
+3. [Déployer le moteur](docs/03-deploiement.md)
+4. [Utiliser le moteur au quotidien](docs/04-utilisation.md)
+5. [L'IA et ses coûts](docs/05-ia-et-couts.md)
+6. [Les règles d'Instagram, l'AI Act et le RGPD](docs/06-regles-et-conformite.md)
+7. [Faire venir les bons prospects en DM](docs/07-strategie-instagram.md)
 
-## Feuille de route
-
-1. Cadrage : questionnaire, offres, cible n°1, ton de l'IA.
-2. Configuration Meta : compte professionnel, app développeur, webhooks, test avec un vrai compte externe.
-3. Moteur entrant, master prompt « pendant » et base de données.
-4. Cockpit, alertes et relances.
-5. Maquette instantanée, moteur sortant assisté, revue hebdomadaire.
+Le questionnaire de cadrage du projet reste disponible : https://claude.ai/artifact/KvscPJYpqortLYZGGroG1f

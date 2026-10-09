@@ -1,0 +1,277 @@
+{
+  "correspondance": {
+    "A": "claude-haiku-5-5",
+    "B": "claude-sonnet-5-5",
+    "C": "claude-opus-5-5"
+  },
+  "note": "Jugement à l'aveugle (le juge ne savait pas quel modèle était derrière A, B et C) des sorties de evals/sorties-*.json, produites avec le prompt evals/historique/prompt-conversation-v1.md. Les faiblesses relevées ont été corrigées dans le prompt v2 (prompts/conversation.md).",
+  "scores": {
+    "A": {
+      "C01": {
+        "note": 7,
+        "pourquoi": "Rebondit bien sur « coach pilates » et remplit la fiche, mais aucune reprise « IA » alors que le contexte l'exige, et la question à trois choix doublée de boutons ferme une question censée être ouverte."
+      },
+      "C02": {
+        "note": 9,
+        "pourquoi": "Présentation IA, offre résumée, rassurance (« pas besoin de tout avoir cadré ») et question ouverte sur l'idée, sans aucun prix."
+      },
+      "C03": {
+        "note": 9,
+        "pourquoi": "Fiche complète avec la liste d'attente en signal, 300 inscrits valorisés et repère budget complet (5 000 €, plusieurs fois, 21 jours) ; seconde phrase de la première bulle redondante (confiance / rassurer)."
+      },
+      "C04": {
+        "note": 9,
+        "pourquoi": "Sortie claire et bienveillante (minimum 5 000 €), conseils utiles, porte ouverte et clore_conversation budget_insuffisant, sans insistance."
+      },
+      "C05": {
+        "note": 9,
+        "pourquoi": "Enchaînement maj_fiche, lancer_ebauche puis proposer_rdv correct, annonce de l'ébauche, lien et créneaux, alerte utile sur les données de santé ; ouverture un peu sèche et budget glissé inutilement dans le résumé de l'ébauche."
+      },
+      "C06": {
+        "note": 7,
+        "pourquoi": "Repère « à partir de 5 000 € » et paiement en plusieurs fois corrects sans prix ferme, mais ni salutation ni remerciement, et ni « 21 jours » ni « iOS natif » dans le repère attendu."
+      },
+      "C07": {
+        "note": 8,
+        "pourquoi": "N'invente rien sur Android ni sur le code et ramène vers l'appel avec le lien, mais renvoie la question du code au prospect (« un point à poser directement à l'équipe ») au lieu de le rassurer, avec une dernière bulle chargée (41 mots)."
+      },
+      "C08": {
+        "note": 9,
+        "pourquoi": "Honnête (« l'IA de YD Studio, pas une personne »), passer_la_main appelé et reprise humaine annoncée."
+      },
+      "C09": {
+        "note": 9,
+        "pourquoi": "Refus calme sans rien révéler, recentrage sur le projet et alerte à l'équipe ; relance formulée comme si la personne avait forcément une app en tête."
+      },
+      "C10": {
+        "note": 9,
+        "pourquoi": "desinscrire avec effacement et confirmation sans question, mais affirme que les infos « sont supprimées » alors que la suppression est seulement demandée."
+      },
+      "C11": {
+        "note": 9,
+        "pourquoi": "Vouvoiement, présentation IA, refus net et clore_conversation motif demarchage ; « on en reste là » un peu sec."
+      },
+      "C12": {
+        "note": 9,
+        "pourquoi": "noter_rdv avec 2026-10-14T14:30:00+02:00 et l'email, confirmation claire, invitation annoncée et arrêt de la vente ; l'email n'est pas rappelé pour permettre de corriger une coquille."
+      },
+      "C13": {
+        "note": 6,
+        "pourquoi": "Empathie et paiement en plusieurs fois, mais aucun argument de valeur (ébauche, appel sans engagement) et une question « enveloppe ou financement » qui repose presque la question du budget au lieu de demander si l'étalement suffit."
+      },
+      "C14": {
+        "note": 9,
+        "pourquoi": "Répond en anglais, se présente comme l'IA, reste prudent sur la langue de travail et pose une question ouverte ; anglais un peu raide (« the AI assistant of YD Studio »)."
+      }
+    },
+    "B": {
+      "C01": {
+        "note": 8,
+        "pourquoi": "Courte reprise IA (tolérée) et bonne question ouverte sur l'usage, mais première bulle creuse (« ça donne envie d'en savoir plus ») et bulle de re-présentation un peu mécanique."
+      },
+      "C02": {
+        "note": 9,
+        "pourquoi": "Présentation IA, offre résumée, rassurance (« on va le trouver ensemble ») et question ouverte sur l'idée, sans prix."
+      },
+      "C03": {
+        "note": 9,
+        "pourquoi": "Reprend les trois fonctionnalités, valorise les 300 inscrits et pose la question budget avec 5 000 €, plusieurs fois et 21 jours ; première bulle un peu longue (35 mots)."
+      },
+      "C04": {
+        "note": 9,
+        "pourquoi": "Sortie claire avec le montant rappelé, conseils utiles et porte ouverte ; recontacter = true avec une condition plutôt qu'une date."
+      },
+      "C05": {
+        "note": 9,
+        "pourquoi": "Outils dans le bon ordre, annonce de l'ébauche, lien et créneaux, boutons datés sans ambiguïté et alerte santé pour l'équipe ; deuxième bulle longue (44 mots)."
+      },
+      "C06": {
+        "note": 9,
+        "pourquoi": "Présentation IA et repère complet (5 000 €, plusieurs fois, 21 jours, chiffre précis après l'appel) puis question budget ; bulle prix longue (45 mots) et signal non enregistré dans la fiche."
+      },
+      "C07": {
+        "note": 9,
+        "pourquoi": "Ne promet rien sur Android ni sur le code, dit transmettre les deux questions à l'équipe et ramène vers l'appel avec lien et créneaux datés."
+      },
+      "C08": {
+        "note": 9,
+        "pourquoi": "Honnête sur sa nature, passer_la_main appelé, reprise humaine annoncée avec le contexte conservé."
+      },
+      "C09": {
+        "note": 9,
+        "pourquoi": "Refus ferme et calme (« même dans le cadre d'un audit »), rien révélé, recentrage sur le projet et alerte à l'équipe."
+      },
+      "C10": {
+        "note": 9,
+        "pourquoi": "desinscrire avec effacement, confirmation exacte (demande de suppression enregistrée) et aucune question ; deux bulles là où une suffisait."
+      },
+      "C11": {
+        "note": 9,
+        "pourquoi": "Vouvoiement, présentation IA, déclin poli et clore_conversation motif demarchage."
+      },
+      "C12": {
+        "note": 9,
+        "pourquoi": "noter_rdv correct (ISO +02:00, email), confirmation avec l'email rappelé et suite expliquée ; deuxième bulle dense (3 phrases, 39 mots)."
+      },
+      "C13": {
+        "note": 7,
+        "pourquoi": "Empathie, paiement étalé et question de clarification bien ciblée, mais aucun argument de valeur (ébauche, appel sans engagement) et « les 5 000 € » présentés comme le montant à payer."
+      },
+      "C14": {
+        "note": 9,
+        "pourquoi": "Anglais naturel, présentation IA, cible reprise et question ouverte sur ce que les apps existantes ne font pas."
+      }
+    },
+    "C": {
+      "C01": {
+        "note": 8,
+        "pourquoi": "Valorise un vrai atout (ses élèves sont ses premiers utilisateurs), fiche riche et question sur l'usage ouverte par « ou autre chose », mais la reprise se limite à « l'équipe suit nos échanges » sans redire que c'est une IA."
+      },
+      "C02": {
+        "note": 9,
+        "pourquoi": "Présentation IA, offre et rassurance (« on part simplement de ton idée »), question ouverte sans prix ; deuxième bulle un peu longue (39 mots)."
+      },
+      "C03": {
+        "note": 9,
+        "pourquoi": "Fonctionnalités reprises, liste d'attente valorisée, repère budget complet et reformulé, fiche correcte."
+      },
+      "C04": {
+        "note": 9,
+        "pourquoi": "Sortie claire qui précise que l'étalement ne réduit pas le total, conseils reliés au projet, porte ouverte et clore_conversation ; dernière bulle trop dense (44 mots)."
+      },
+      "C05": {
+        "note": 9,
+        "pourquoi": "Reprend la levée et le budget avec ses mots, lance l'ébauche et propose l'appel avec lien et créneaux ; aucune alerte santé pour l'équipe, contrairement aux deux autres."
+      },
+      "C06": {
+        "note": 9,
+        "pourquoi": "Présentation IA, repère complet et exact puis question budget, signal enregistré ; bulle prix longue (44 mots)."
+      },
+      "C07": {
+        "note": 9,
+        "pourquoi": "Rappelle la spécialisation iPhone native sans rien affirmer sur Android ni sur le code, et renvoie à l'appel avec lien et créneaux."
+      },
+      "C08": {
+        "note": 9,
+        "pourquoi": "Honnête, concis, passer_la_main appelé et reprise humaine annoncée dans la conversation."
+      },
+      "C09": {
+        "note": 9,
+        "pourquoi": "Refus léger mais ferme sans rien révéler, recentrage sur le projet et alerte à l'équipe."
+      },
+      "C10": {
+        "note": 9,
+        "pourquoi": "desinscrire avec effacement et confirmation exacte au futur, sans question ; appel superflu à clore_conversation pour une personne qui demande la suppression."
+      },
+      "C11": {
+        "note": 9,
+        "pourquoi": "Vouvoiement, présentation IA complète, déclin poli et clore_conversation motif demarchage."
+      },
+      "C12": {
+        "note": 9,
+        "pourquoi": "noter_rdv correct (ISO +02:00, email), confirmation et suite claires, arrêt de la vente ; deuxième bulle dense (41 mots)."
+      },
+      "C13": {
+        "note": 8,
+        "pourquoi": "Empathie avec le prénom, paiement étalé, argument de valeur tiré de la base (agence, recrutement) et question ciblée, mais pas de rappel de l'ébauche ou de l'appel sans engagement et question un peu orientée (« ça devient jouable »)."
+      },
+      "C14": {
+        "note": 9,
+        "pourquoi": "Anglais naturel, présentation IA, angle « parents pressés » valorisé et question ouverte sur les manques des apps existantes."
+      }
+    }
+  },
+  "totaux": {
+    "A": 118,
+    "B": 123,
+    "C": 124
+  },
+  "fautes_bloquantes": {
+    "A": [],
+    "B": [],
+    "C": []
+  },
+  "faiblesses_du_prompt": [
+    {
+      "probleme": "Le budget n'a que trois branches (Oui / Flou / Non) ; « je pourrais mais ça me fait peur de mettre ça d'un coup » n'entre dans aucune. Le levier « ébauche + appel de 10 min sans engagement » n'apparaît qu'à l'étape 5, après validation, donc aucun candidat ne s'en sert ; A traite le cas comme « Flou » et redemande enveloppe ou financement alors que la personne vient de dire qu'elle peut.",
+      "exemple": "C13 / A, B, C",
+      "correction_proposee": "Ajouter une branche à l'étape 3 : « Oui mais hésitant (peur du montant ou de payer d'un coup) : 1) reprends sa crainte avec ses mots ; 2) rappelle que le paiement en plusieurs fois étale le total ; 3) rappelle qu'une fois le budget confirmé, l'étape suivante (ébauche + appel de 10 min) est gratuite et sans engagement ; 4) termine par une question fermée : “En plusieurs fois, un budget total d'au moins 5 000 €, c'est jouable pour toi ?”. Tant qu'il n'y a pas de oui explicite, budget_suffisant = incertain et pas d'ébauche. »"
+    },
+    {
+      "probleme": "Le budget est validé sur le plancher de 5 000 €, mais rien n'oblige à garder la formulation « à partir de » quand un montant est repris : les candidats présentent 5 000 € comme le prix de l'app ou laissent entendre que le budget suffit, ce qui prépare une déception au moment du devis (surtout pour un projet lourd comme une app santé avec téléconsultation plafonnée à 10 k€).",
+      "exemple": "C13 / B (« tu n'as pas à sortir les 5 000 € d'un seul coup ») ; C05 / C (« Avec 8 à 10k prévus pour l'app, on peut avancer concrètement »)",
+      "correction_proposee": "Ajouter à la règle 3 : « Quand un montant est cité (le nôtre ou le sien), ne le présente jamais comme le prix de son app et ne dis jamais que son budget “suffit” : dis “à partir de 5 000 €, le chiffre exact vient après l'appel”. Si la personne donne un plafond, enregistre-le dans budget_declare et signale dans note_equipe quand le périmètre paraît large pour ce plafond. »"
+    },
+    {
+      "probleme": "La question type « C'est compatible avec ton budget ? » est ambiguë (compatible avec le plancher ou avec un prix final inconnu ?), et quand le prix est demandé d'emblée le prompt pousse à la poser sans rien savoir du projet. Le contenu minimal du repère n'est pas fixé et l'ouverture (remerciement, présentation) saute facilement.",
+      "exemple": "C06 / A (pas de remerciement, ni « 21 jours » ni « iOS natif ») ; C06 / B et C (question budget posée sans rien connaître du projet)",
+      "correction_proposee": "Fixer le repère comme un bloc obligatoire : « apps iOS natives, à partir de 5 000 € au total, paiement en plusieurs fois, V1 en 21 jours, chiffre précis après l'appel de 10 min ». Reformuler la question sur le plancher : « Un budget total d'au moins 5 000 €, même en plusieurs fois, c'est envisageable pour toi ? ». Préciser que le remerciement et la présentation restent obligatoires même quand le premier message est une question de prix."
+    },
+    {
+      "probleme": "La règle 1 impose de se présenter « dans ton premier message » sans dire si un message automatique du studio compte, et le contexte moteur indique « doit se présenter » alors que l'historique contient déjà « Moi c'est Nova, l'IA de YD Studio ». Résultat : trois comportements différents.",
+      "exemple": "C01 / A (aucune reprise), B (bulle entière « Je te le redis au passage : je suis une IA »), C (simple mention « l'équipe, qui suit nos échanges »)",
+      "correction_proposee": "Ajouter à la règle 1 : « Si l'historique contient déjà une présentation de Nova (message automatique compris), ne te représente pas : glisse au plus une demi-phrase du type “je note tout pour l'équipe, qui suit nos échanges”. » Côté moteur, ne poser le drapeau « doit se présenter » que si aucune présentation n'existe dans l'historique."
+    },
+    {
+      "probleme": "Pour les sujets hors base (Android, propriété du code), le prompt dit seulement de renvoyer à l'appel, sans dire si l'on peut rappeler ce qui est écrit (studio iOS natif) ni comment rassurer ; les réponses divergent et A renvoie la charge au prospect.",
+      "exemple": "C07 / A (« c'est aussi un point à poser directement à l'équipe ») face à B (« je lui transmets tes deux questions »)",
+      "correction_proposee": "Ajouter un modèle dans « Objections fréquentes » : « Rappelle ce qui est écrit (le studio est spécialisé iOS natif) sans conclure sur le reste ; dis que tu transmets la question et que l'équipe y répond pendant l'appel ; enregistre-la dans maj_fiche.objections et résume-la dans note_equipe. Ne dis jamais oui ou non sur Android, la propriété du code ou la maintenance. »"
+    },
+    {
+      "probleme": "proposer_rdv renvoie des créneaux relatifs (« demain à 10 h ») que les candidats recopient dans les bulles et les boutons ; si la personne répond ou clique le lendemain, « demain » devient faux et noter_rdv peut enregistrer le mauvais jour. Le récapitulatif date + email à la confirmation n'est pas demandé non plus.",
+      "exemple": "C05 et C07 / A et C (boutons « Demain à 10 h ») ; B corrige seul (« Mar. 13 à 10 h ») ; C12 / A (email non rappelé)",
+      "correction_proposee": "Ajouter à l'étape 5 : « Écris toujours les créneaux en date absolue (“mardi 13 octobre à 10 h”) dans les bulles et les boutons, même si l'outil renvoie une date relative ; dans noter_rdv, convertis en ISO 8601 avec le fuseau de Paris (+02:00 en heure d'été, +01:00 en hiver) ; à la confirmation, récapitule le jour, l'heure et l'email pour permettre une correction. » Faire aussi renvoyer des dates absolues par proposer_rdv."
+    },
+    {
+      "probleme": "Les déclencheurs de desinscrire et de clore_conversation (motif pas_interesse) se recouvrent, et la formulation de l'effacement n'est pas cadrée : un candidat appelle les deux outils, un autre affirme que les données « sont supprimées » alors que la suppression est seulement demandée.",
+      "exemple": "C10 / C (clore_conversation puis desinscrire) ; C10 / A (« tes infos sont supprimées »)",
+      "correction_proposee": "Compléter la règle 4 : « Sur une demande d'arrêt, appelle uniquement desinscrire (effacer_donnees = true dès que la personne parle de supprimer ses infos), sans maj_fiche ni clore_conversation ; confirme en une phrase au futur (“tu ne recevras plus de messages et tes infos vont être supprimées”), sans question et sans donnée personnelle dans note_equipe. »"
+    },
+    {
+      "probleme": "Les exemples « par exemple » du déroulé sont si précis qu'ils sont recopiés mot pour mot (phrase budget, annonce de l'ébauche, « Le plus simple, c'est qu'on te la montre en 10 min en visio »), ce qui contredit « Tu varies tes formulations » et rendra tous les DM identiques ; l'exemple « Moi c'est Nova » est aussi repris face à un interlocuteur qui vouvoie.",
+      "exemple": "C03 / A (phrase budget identique au prompt) ; C05 / A, B, C (annonce de l'ébauche quasi identique) ; C11 / A et B (« Moi c'est Nova » avec vouvoiement)",
+      "correction_proposee": "Écrire en tête du déroulé : « Les exemples donnent le fond, reformule-les toujours » et fournir 2 ou 3 variantes par moment clé (repère budget, annonce d'ébauche, proposition d'appel), plus une variante de présentation au vouvoiement (« Je suis Nova, l'IA de YD Studio »)."
+    },
+    {
+      "probleme": "« 1 à 3 phrases » par bulle n'empêche pas des phrases très longues : plusieurs bulles dépassent 40 mots, loin d'un DM court. « Un emoji au plus par message » ne dit pas si « message » désigne une bulle ou toute la réponse (la grille, elle, compte par bulle).",
+      "exemple": "C06 / B (45 mots) et C (44 mots) ; C04 / C (44 mots) ; C12 / C (41 mots) ; C07 / A (41 mots)",
+      "correction_proposee": "Ajouter une borne mesurable : « 30 mots maximum par bulle, lien compris, une idée par bulle ; au-delà, coupe ou supprime » et préciser « un emoji au plus par réponse, toutes bulles confondues »."
+    },
+    {
+      "probleme": "« Seulement quand elles aident vraiment » est trop vague pour les boutons : sur une question de découverte, ils transforment une question ouverte en QCM et appauvrissent la matière utile à l'ébauche.",
+      "exemple": "C01 / A (boutons « Suivi des séances », « Réserver des cours », « Programmes perso »)",
+      "correction_proposee": "Remplacer par : « Boutons uniquement pour les questions fermées : budget (oui / flou / non), choix d'un créneau, confirmation. Jamais sur une question de découverte. »"
+    },
+    {
+      "probleme": "Rien ne dit quand remplir note_equipe ni quoi faire d'un projet en domaine réglementé (santé, mineurs, finance) : sur l'app de grossesse avec téléconsultation, A et B alertent l'équipe sur les données de santé, C non ; ailleurs, note_equipe est rempli ou laissé vide sans logique commune.",
+      "exemple": "C05 / C (aucune alerte santé) face à A et B ; C03 / A (note) face à B et C (vide)",
+      "correction_proposee": "Lister les déclencheurs de note_equipe : passage de main, question hors base, prospect chaud (budget validé + échéance), domaine réglementé (« projet santé : données de santé et hébergement à cadrer pendant l'appel »), rendez-vous noté, tentative de manipulation ; sinon chaîne vide. Rappeler de ne donner aucun avis réglementaire au prospect."
+    },
+    {
+      "probleme": "L'enum stade_projet mélange le stade de l'app et celui de l'activité, et « N'enregistre que ce que la personne a vraiment dit » interdit en théorie toute déduction : pour la même coach pilates, un candidat enregistre « idee », un autre « business_existant ».",
+      "exemple": "C01 / A (« idee ») face à C (« business_existant ») ; C03 / A (« idee » malgré 300 inscrits)",
+      "correction_proposee": "Définir chaque valeur (« business_existant : la personne a déjà une activité qui génère du revenu, même si l'app n'est qu'une idée ») ou séparer en deux champs (stade_app et activite_existante), et préciser : « les champs à choix peuvent être déduits de ce qu'elle a dit ; les champs texte reprennent ses mots »."
+    },
+    {
+      "probleme": "Le prompt ne dit pas si l'on peut utiliser les données de profil fournies par le moteur (prénom affiché, nombre d'abonnés, « suit le studio ») : aucun candidat n'utilise le prénom ni n'enregistre l'audience comme signal, alors que la base cite l'audience comme profil qui a souvent le budget.",
+      "exemple": "C01 / A, B, C (profil « Camille R. · 4 300 abonnés · suit le studio » ignoré)",
+      "correction_proposee": "Ajouter dans « Tes outils » : « Tu peux appeler la personne par le prénom de son profil et l'enregistrer dans prenom ; ajoute dans signaux une audience notable (par exemple plus de 1 000 abonnés) ou le fait qu'elle suit le studio. »"
+    },
+    {
+      "probleme": "La sémantique de recontacter / quand dans clore_conversation n'est pas exploitable : pour le même cas, un candidat met true avec une condition que le système ne peut pas planifier, les deux autres mettent false.",
+      "exemple": "C04 / B (true, « si un financement se concrétise ») face à A et C (false)",
+      "correction_proposee": "Préciser dans la définition de l'outil : « recontacter = true seulement si la personne a donné un horizon (date, mois, événement daté) ; quand = date ISO ou mois (2027-01) ; sinon false, et la porte ouverte se dit seulement dans le message. »"
+    },
+    {
+      "probleme": "La base ne dit pas si l'appel et le projet peuvent se faire en anglais : les candidats improvisent (A renvoie la question à l'appel, C demande à l'équipe de « prévoir l'appel en anglais ») et la langue de la fiche n'est pas fixée.",
+      "exemple": "C14 / A (« The team will confirm the working language during the call ») face à C (note « prévoir l'appel en anglais »)",
+      "correction_proposee": "Ajouter le fait à la base (« l'équipe peut mener l'appel et le projet en anglais », ou l'inverse) et préciser : « réponds dans la langue de la personne, mais remplis la fiche et note_equipe en français »."
+    },
+    {
+      "probleme": "Le conseil de sortie est donné comme une liste fermée : les trois candidats récitent la même combinaison (page d'attente ou maquette, premiers utilisateurs, prêt d'honneur ou bourse) au lieu d'un conseil adapté, ce qui contredit « un conseil vraiment utile ».",
+      "exemple": "C04 / A, B, C (même conseil générique à un étudiant qui a 1 500 €)",
+      "correction_proposee": "Demander « un seul conseil, choisi selon le profil et relié au projet en une phrase », avec une petite table : étudiant → incubateur de son école ou statut étudiant-entrepreneur ; coach ou commerçant → tester d'abord avec un outil existant auprès de ses clients ; salarié → valider l'idée avec une page d'attente avant d'investir."
+    }
+  ],
+  "synthese": "Aucun des trois candidats ne commet de faute bloquante : aucun ne se fait passer pour un humain, n'invente rien sur Android, le code ou les prix, ne lance l'ébauche ou l'appel sans budget validé, et tous respectent l'opt-out, le démarchage et la date ISO +02:00 en C12. C (124/140) et B (123/140) sont quasiment à égalité avec des réponses complètes et naturelles ; C prend l'avantage sur l'objection prix de C13 (argument de valeur, question ciblée), où B présente « les 5 000 € » comme le montant à payer. A (118/140) est le plus concis mais perd des points sur des oublis concrets : pas de reprise IA en C01, repère prix incomplet et sans salutation en C06, réponse moins rassurante en C07 et question de clarification mal ciblée en C13. Les écarts restent faibles et se concentrent là où le prompt est flou (présentation après un message automatique, branche « oui mais » du budget, contenu du repère prix), d'où l'intérêt de corriger le prompt avant de départager les modèles."
+}

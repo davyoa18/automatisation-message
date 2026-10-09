@@ -1,6 +1,6 @@
 /**
- * Propose des créneaux d'appel plausibles (jours ouvrés, heure de Paris) quand aucun outil de
- * réservation n'est branché. Les créneaux sont des suggestions : l'équipe confirme toujours.
+ * Propose des créneaux d'appel plausibles (jours ouvrés, heure de Paris, dates absolues) quand
+ * aucun outil de réservation n'est branché. Les créneaux sont des suggestions : l'équipe confirme toujours.
  */
 export function suggestSlots(now: Date, tz = "Europe/Paris", count = 3): string[] {
   const hours = [
@@ -30,13 +30,13 @@ export function suggestSlots(now: Date, tz = "Europe/Paris", count = 3): string[
     const p = parts(day);
     const isWeekend = p.weekday === "samedi" || p.weekday === "dimanche";
     if (!isWeekend) {
-      for (const [h, m] of hours) {
-        if (out.length >= count) break;
-        if (dayOffset === 0 && (h < nowP.hour + 2 || (h === nowP.hour + 2 && m < nowP.minute))) continue;
-        const label = dayOffset === 0 ? "aujourd'hui" : dayOffset === 1 ? "demain" : `${p.weekday} ${p.day} ${p.month}`;
-        out.push(`${label} à ${h} h${m ? ` ${String(m).padStart(2, "0")}` : ""}`);
-        // Un créneau par jour suffit pour varier les propositions.
-        break;
+      // Un créneau par jour, à une heure qui tourne d'un jour à l'autre pour varier les propositions.
+      const ordered = [...hours.slice(out.length % hours.length), ...hours.slice(0, out.length % hours.length)];
+      const slot = ordered.find(([h, m]) => dayOffset > 0 || h > nowP.hour + 2 || (h === nowP.hour + 2 && m >= nowP.minute));
+      if (slot) {
+        const [h, m] = slot;
+        // Date absolue : le message peut être lu le lendemain, « demain » deviendrait faux.
+        out.push(`${p.weekday} ${p.day} ${p.month} à ${h} h${m ? ` ${String(m).padStart(2, "0")}` : ""}`);
       }
     }
     dayOffset++;

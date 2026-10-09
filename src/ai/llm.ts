@@ -45,26 +45,7 @@ export function textOf(content: ContentBlock[]): string {
     .join("");
 }
 
-/** Extrait un objet JSON d'un texte (réponse brute ou bloc ```json). */
-export function parseJsonLoose(text: string): unknown {
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const fence = /```(?:json)?\s*([\s\S]*?)```/.exec(trimmed);
-    if (fence?.[1]) {
-      try {
-        return JSON.parse(fence[1]);
-      } catch {
-        /* continue */
-      }
-    }
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
-    throw new Error("Réponse sans JSON exploitable");
-  }
-}
+export { parseJsonLoose } from "../util/json.js";
 
 interface Degrade {
   fallbacks: boolean;

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { Config } from "../config.js";
 import type { Db } from "../db/client.js";
 import type { Contact, Conversation, Lead, Stage } from "../domain.js";
@@ -9,7 +8,8 @@ import { optOutContact, setContactCoordinates } from "../db/repo/contacts.js";
 import { pauseAi } from "../db/repo/conversations.js";
 import { createEbauche, getEbauche, logEvent } from "../db/repo/misc.js";
 import { cancelJobs, enqueue } from "../db/repo/jobs.js";
-import { advanceStage, computeScore, computeTemperature, deriveBudgetStatus, mergeFiche, stageFromFiche, type FichePatch } from "./scoring.js";
+import { advanceStage, computeScore, computeTemperature, deriveBudgetStatus, mergeFiche, stageFromFiche } from "./scoring.js";
+import { CONSIGNES, clotureStage, ficheAdvice, lenientFiche, parseRdvDate } from "./tool-logic.js";
 import { suggestSlots } from "../util/slots.js";
 import { addMs, type Clock } from "../util/index.js";
 
@@ -44,7 +44,7 @@ export function agentTools(studio: Studio): ToolDef[] {
     {
       name: "maj_fiche",
       description:
-        "Enregistre dans la fiche du prospect les informations nouvelles qu'il vient de donner : prénom, projet, cible, fonctionnalités, stade, financement, budget, échéance, coordonnées, objections. Appelle-le dès qu'une information nouvelle apparaît, avant d'écrire ta réponse. N'enregistre que ce que le prospect a réellement dit. Renvoie la fiche à jour, le statut du budget et l'étape suivante conseillée.",
+        "Enregistre dans la fiche du prospect les informations nouvelles qu'il vient de donner : prénom, projet, cible, fonctionnalités, stade, financement, budget, échéance, coordonnées, objections. Appelle-le dès qu'une information nouvelle apparaît, avant d'écrire ta réponse. N'invente rien : les champs texte reprennent ses mots, les champs à choix peuvent se déduire de ce qu'il a dit. Renvoie la fiche à jour, le statut du budget et l'étape suivante conseillée.",
       input_schema: {
         type: "object",
         properties: {
@@ -54,7 +54,12 @@ export function agentTools(studio: Studio): ToolDef[] {
           cible: { type: "string", description: "Pour qui est l'app" },
           probleme: { type: "string", description: "Le problème résolu ou l'envie derrière le projet" },
           fonctionnalites: { type: "array", items: { type: "string" }, description: "Fonctionnalités évoquées" },
-          stade_projet: { type: "string", enum: ["idee", "maquette", "prototype", "app_existante", "business_existant", "autre"] },
+          stade_projet: {
+            type: "string",
+            enum: ["idee", "maquette", "prototype", "app_existante", "business_existant", "autre"],
+            description:
+              "business_existant prime dès que la personne a déjà une activité qui génère du revenu (coach, commerce, marque…), même si l'app n'est qu'une idée. Sinon : idee (rien de concret), maquette (écrans dessinés), prototype (version testable), app_existante (app déjà publiée à refaire ou faire évoluer).",
+          },
           role: { type: "string", description: "Rôle du prospect (fondateur, associé, salarié…)" },
           societe_creee: { type: "boolean" },
           financement: {
@@ -149,8 +154,8 @@ export function agentTools(studio: Studio): ToolDef[] {
         type: "object",
         properties: {
           motif: { type: "string", enum: ["budget_insuffisant", "hors_cible", "pas_interesse", "spam", "demarchage", "autre"] },
-          recontacter: { type: "boolean", description: "true si la personne pourrait revenir plus tard (budget dans quelques mois…)" },
-          quand: { type: "string", description: "Quand recontacter, si pertinent ; chaîne vide sinon" },
+          recontacter: { type: "boolean", description: "true seulement si la personne a donné un horizon (une date, un mois, un événement daté) ; sinon false, et la porte ouverte se dit seulement dans le message" },
+          quand: { type: "string", description: "Quand recontacter : date ISO ou mois (ex : 2027-01) ; chaîne vide si recontacter vaut false" },
         },
         required: ["motif", "recontacter", "quand"],
         additionalProperties: false,
@@ -159,7 +164,7 @@ export function agentTools(studio: Studio): ToolDef[] {
     {
       name: "desinscrire",
       description:
-        "À appeler quand la personne demande qu'on arrête de lui écrire, ou qu'on supprime ses données. Plus aucun message automatique ne lui sera envoyé.",
+        "À appeler quand la personne demande qu'on arrête de lui écrire, ou qu'on supprime ses données (dans ce cas effacer_donnees = true). Plus aucun message automatique ne lui sera envoyé. Remplace clore_conversation : n'appelle pas les deux.",
       strict: true,
       input_schema: {
         type: "object",
@@ -172,44 +177,6 @@ export function agentTools(studio: Studio): ToolDef[] {
 }
 
 /* ------------------------------ Exécution ------------------------------ */
-
-const FichePatchSchema = z
-  .object({
-    prenom: z.string(),
-    projet: z.string(),
-    description: z.string(),
-    cible: z.string(),
-    probleme: z.string(),
-    fonctionnalites: z.array(z.string()),
-    stade_projet: z.enum(["idee", "maquette", "prototype", "app_existante", "business_existant", "autre"]),
-    role: z.string(),
-    societe_creee: z.boolean(),
-    financement: z.array(z.string()),
-    montant_leve_eur: z.coerce.number(),
-    budget_declare: z.string(),
-    budget_estime_eur: z.coerce.number(),
-    budget_suffisant: z.enum(["oui", "non", "incertain"]),
-    paiement_plusieurs_fois: z.boolean(),
-    echeance: z.string(),
-    decisionnaire: z.boolean(),
-    email: z.string(),
-    telephone: z.string(),
-    site_web: z.string(),
-    objections: z.array(z.string()),
-    signaux: z.array(z.string()),
-    notes: z.string(),
-  })
-  .partial();
-
-/** Garde ce qui est valide champ par champ : une valeur mal typée ne fait pas perdre les autres. */
-function lenientFiche(input: Record<string, unknown>): FichePatch {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(input)) {
-    const one = FichePatchSchema.safeParse({ [k]: v });
-    if (one.success && k in one.data) out[k] = (one.data as Record<string, unknown>)[k];
-  }
-  return out as FichePatch;
-}
 
 async function saveLead(rt: ToolRuntime, patch: Parameters<typeof updateLead>[2]): Promise<void> {
   rt.lead = await updateLead(rt.db, rt.contact.id, patch);
@@ -268,27 +235,18 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
           await event(rt, "budget_insuffisant", { budget: fiche.budget_declare ?? fiche.budget_estime_eur ?? null });
         }
       }
-      const manquants: string[] = [];
-      if (!fiche.description && !fiche.projet) manquants.push("ce que fait l'app");
-      if (!fiche.cible) manquants.push("pour qui");
-      if ((fiche.fonctionnalites?.length ?? 0) < 2) manquants.push("2 ou 3 fonctionnalités clés");
-      if (budget === "inconnu" || budget === "a_confirmer") manquants.push("le budget");
-      let suite: string;
-      if (budget === "insuffisant") suite = "Budget insuffisant : fais une sortie élégante, puis clore_conversation.";
-      else if (budget === "ok" && manquants.length === 0 && !rt.lead.ebauche_id) suite = "Projet clair et budget validé : lance l'ébauche (lancer_ebauche) puis propose l'appel.";
-      else if (budget === "ok" && rt.lead.ebauche_id) suite = "Ébauche déjà lancée : propose l'appel (proposer_rdv) si ce n'est pas fait.";
-      else suite = `À découvrir ensuite : ${manquants.join(", ")}.`;
+      const { manquants, suite } = ficheAdvice(fiche, budget, !!rt.lead.ebauche_id);
       return { ok: true, budget, etape: rt.lead.stage, manquants, suite };
     }
 
     case "lancer_ebauche": {
       if (rt.lead.budget_status !== "ok") {
-        return { refuse: true, raison: `Budget non validé. Vérifie d'abord que la personne peut investir au moins ${min} € au total.` };
+        return { refuse: true, raison: CONSIGNES.ebaucheRefusee(min) };
       }
       if (rt.lead.ebauche_id) {
         const existing = await getEbauche(rt.db, rt.lead.ebauche_id);
         if (existing && existing.status !== "echec") {
-          return { statut: "deja_lancee", prete: existing.status === "prete", consigne: "L'ébauche existe déjà : n'en relance pas une autre, propose l'appel." };
+          return { statut: "deja_lancee", prete: existing.status === "prete", consigne: CONSIGNES.ebaucheDejaLancee };
         }
       }
       const resume = String(input.resume ?? "").slice(0, 2000);
@@ -313,13 +271,13 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
       );
       return {
         statut: "en_preparation",
-        consigne: `Annonce que l'équipe prépare une première ébauche de son app, puis propose l'appel de ${rt.studio.vars.DUREE_APPEL} minutes (appelle proposer_rdv).`,
+        consigne: CONSIGNES.ebaucheLancee(rt.studio.vars.DUREE_APPEL ?? "10"),
       };
     }
 
     case "proposer_rdv": {
       if (rt.lead.budget_status !== "ok") {
-        return { refuse: true, raison: `Budget non validé (minimum ${min} €). Qualifie le budget avant de proposer l'appel.` };
+        return { refuse: true, raison: CONSIGNES.rdvRefuse(min) };
       }
       const creneaux = suggestSlots(now, rt.cfg.TIMEZONE);
       await saveLead(rt, rescore(rt, advanceStage(rt.lead.stage, "rdv_propose")));
@@ -329,9 +287,7 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
       return {
         lien,
         creneaux,
-        consigne: lien
-          ? "Donne le lien tel quel, sans le modifier ni le raccourcir, et propose aussi 2 créneaux au choix. Si la personne choisit un créneau, utilise noter_rdv."
-          : "Aucun lien de réservation configuré : propose 2 créneaux et demande lequel lui convient, puis enregistre son choix avec noter_rdv.",
+        consigne: lien ? CONSIGNES.rdvAvecLien : CONSIGNES.rdvSansLien,
       };
     }
 
@@ -339,8 +295,7 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
       const quand = String(input.quand ?? "").trim();
       const email = String(input.email ?? "").trim();
       const remarque = String(input.remarque ?? "").trim();
-      const parsed = Date.parse(quand);
-      const rdvAt = Number.isFinite(parsed) && parsed > now.getTime() ? new Date(parsed) : null;
+      const rdvAt = parseRdvDate(quand, now);
       if (email) {
         await setContactCoordinates(rt.db, rt.contact.id, { email });
         rt.contact = { ...rt.contact, email };
@@ -366,7 +321,7 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
       );
       return {
         ok: true,
-        consigne: `Confirme le créneau, dis que l'équipe envoie l'invitation${email ? " par email" : " (demande l'email si tu ne l'as pas)"}, et arrête de vendre.`,
+        consigne: CONSIGNES.rdvNote(!!email),
       };
     }
 
@@ -379,14 +334,14 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
       await cancelJobs(rt.db, { types: ["relancer"], conversationId: rt.conversation.id });
       await event(rt, "relai_humain", { raison, urgence });
       await notifyTeam(rt, "relai_humain", `Un humain doit répondre : ${who(rt)}`, raison, urgence === "haute");
-      return { ok: true, consigne: "Dis que quelqu'un de l'équipe revient vers la personne très vite. Ne pose pas de nouvelle question." };
+      return { ok: true, consigne: CONSIGNES.relaiHumain };
     }
 
     case "clore_conversation": {
       const motif = String(input.motif ?? "autre");
       const recontacter = input.recontacter === true;
       const quand = String(input.quand ?? "").trim();
-      const stage: Stage = motif === "budget_insuffisant" || motif === "hors_cible" ? "non_qualifie" : "perdu";
+      const stage = clotureStage(motif);
       await saveLead(rt, {
         ...rescore(rt, advanceStage(rt.lead.stage, stage)),
         next_action: recontacter ? `Recontacter ${quand || "plus tard"} (${motif})` : null,
@@ -406,11 +361,11 @@ export async function runTool(rt: ToolRuntime, name: string, rawInput: unknown):
       await cancelJobs(rt.db, { types: ["relancer"], conversationId: rt.conversation.id });
       await event(rt, "desinscription", { effacer });
       if (effacer) await notifyTeam(rt, "effacement", `Demande d'effacement : ${who(rt)}`, "Le prospect demande la suppression de ses données : bouton « Effacer » dans le cockpit.", true);
-      return { ok: true, consigne: "Confirme en une phrase que tu ne lui écriras plus. Aucune question." };
+      return { ok: true, consigne: CONSIGNES.desinscription };
     }
 
     default:
-      return { erreur: `Outil inconnu : ${name}. Outils disponibles : maj_fiche, lancer_ebauche, proposer_rdv, noter_rdv, passer_la_main, clore_conversation, desinscrire.` };
+      return { erreur: CONSIGNES.outilInconnu(name) };
   }
 }
 

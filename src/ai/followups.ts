@@ -3,30 +3,12 @@ import type { Config } from "../config.js";
 import type { Contact, Conversation, Lead, Message } from "../domain.js";
 import type { Studio } from "../studio/knowledge.js";
 import { type Llm, parseJsonLoose, textOf } from "./llm.js";
-import { formatParis, truncateBytes, type Clock } from "../util/index.js";
+import { truncateBytes, type Clock } from "../util/index.js";
+import { analyseRequest, relanceRequest, transcriptOf } from "./conversation-context.js";
 
 /** Transcription lisible d'une conversation (pour les appels « hors conversation »). */
 export function transcript(history: Message[], studio: Studio, tz = "Europe/Paris"): string {
-  return history
-    .filter((m) => m.status !== "annule" && (m.text ?? "").trim())
-    .map((m) => {
-      const who =
-        m.direction === "entrant" ? "Prospect" : m.author === "humain" ? "Équipe" : m.author === "ia" ? studio.vars.ASSISTANT_NAME : "Système";
-      const when = formatParis(new Date(m.created_at), tz);
-      return `[${when}] ${who} : ${(m.text ?? "").trim()}`;
-    })
-    .join("\n");
-}
-
-function leadBlock(lead: Lead, contact: Contact): string {
-  return [
-    `Étape : ${lead.stage} · Budget : ${lead.budget_status} · Score : ${lead.score}/100`,
-    `Profil : ${contact.username ? "@" + contact.username : "?"}${contact.name ? " · " + contact.name : ""}`,
-    `Fiche : ${JSON.stringify(lead.fiche)}`,
-    lead.summary ? `Résumé : ${lead.summary}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return transcriptOf(history, studio.vars.ASSISTANT_NAME ?? "Nova", tz);
 }
 
 /* ------------------------------ Relance ------------------------------ */
@@ -49,16 +31,16 @@ export async function draftRelance(
   args: { conversation: Conversation; contact: Contact; lead: Lead; history: Message[]; numero: number; total: number },
 ): Promise<z.infer<typeof RelanceOut> & { costUsd: number }> {
   const { llm, cfg, studio, clock } = deps;
-  const user = [
-    `Relance n°${args.numero} sur ${args.total}${args.numero === args.total ? " (la dernière)" : ""}.`,
-    `Maintenant : ${formatParis(clock.now(), cfg.TIMEZONE)}.`,
-    "",
-    "## Fiche",
-    leadBlock(args.lead, args.contact),
-    "",
-    "## Conversation",
-    transcript(args.history, studio, cfg.TIMEZONE),
-  ].join("\n");
+  const user = relanceRequest({
+    numero: args.numero,
+    total: args.total,
+    now: clock.now(),
+    lead: args.lead,
+    contact: args.contact,
+    history: args.history,
+    assistantName: studio.vars.ASSISTANT_NAME ?? "Nova",
+    timezone: cfg.TIMEZONE,
+  });
   const res = await llm.create({
     purpose: "relance",
     model: cfg.AI_MODEL_CONVERSATION,
@@ -105,7 +87,7 @@ export async function analyseConversation(
   args: { conversation: Conversation; contact: Contact; lead: Lead; history: Message[] },
 ): Promise<Analyse & { costUsd: number }> {
   const { llm, cfg, studio } = deps;
-  const user = ["## Fiche", leadBlock(args.lead, args.contact), "", "## Conversation", transcript(args.history, studio, cfg.TIMEZONE)].join("\n");
+  const user = analyseRequest({ lead: args.lead, contact: args.contact, history: args.history, assistantName: studio.vars.ASSISTANT_NAME ?? "Nova", timezone: cfg.TIMEZONE });
   const res = await llm.create({
     purpose: "analyse",
     model: cfg.AI_MODEL_ANALYSE,

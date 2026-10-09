@@ -1,4 +1,4 @@
-import { between, clamp, type Rng } from "../util/index.js";
+import { between, clamp, type Rng } from "../util/pure.js";
 
 /**
  * Rythme d'envoi : l'IA ne répond pas en 200 ms avec trois paragraphes. Elle « lit », tape

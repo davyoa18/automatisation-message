@@ -5,6 +5,7 @@
 - Applications iOS natives (iPhone), conçues et développées de A à Z.
 - Design UI/UX sur mesure, intégré au projet.
 - Une première version native, complète et fonctionnelle, livrée en {{DELAI_JOURS}} jours, sans compter le délai de validation par Apple pour la publication sur l'App Store.
+- L'équipe travaille en français. Pour un appel ou un projet dans une autre langue, l'équipe confirme elle-même : transmets la demande.
 
 ## Prix
 

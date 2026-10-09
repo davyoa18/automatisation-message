@@ -5,6 +5,9 @@ import { canSendAutomated, relanceFits } from "../src/engine/window.js";
 import { parseWebhook, verifySignature } from "../src/instagram/webhook.js";
 import { matchCommentRule } from "../src/engine/engine.js";
 import { sanitizeButtons, sanitizeMessages, historyToTurns } from "../src/ai/agent.js";
+import { ensureDisclosure, hasDisclosure, relanceRequest } from "../src/ai/conversation-context.js";
+import { ficheAdvice, lenientFiche } from "../src/ai/tool-logic.js";
+import { parseJsonLoose } from "../src/util/json.js";
 import { sanitizeScreenHtml } from "../src/ebauche/generator.js";
 import { suggestSlots } from "../src/util/slots.js";
 import { hmacSha256Hex, seededRng, truncateBytes } from "../src/util/index.js";
@@ -65,10 +68,12 @@ describe("rythme et fenêtre", () => {
     expect(relanceFits(last, new Date("2026-10-13T07:00:00Z"))).toBe(true);
   });
 
-  it("propose des créneaux en jours ouvrés", () => {
+  it("propose des créneaux en jours ouvrés, en dates absolues", () => {
     const slots = suggestSlots(new Date("2026-10-16T15:00:00Z")); // vendredi 17 h à Paris
     expect(slots.length).toBe(3);
-    expect(slots.join(" ")).not.toMatch(/samedi|dimanche/);
+    expect(slots.join(" ")).not.toMatch(/samedi|dimanche|demain|aujourd'hui/);
+    expect(slots[0]).toBe("lundi 19 octobre à 10 h");
+    expect(new Set(slots.map((s) => s.split(" à ")[1])).size).toBeGreaterThan(1);
   });
 });
 
@@ -118,6 +123,53 @@ describe("sorties de l'IA", () => {
     expect(sanitizeMessages(["**Salut** !", "", "a", "b", "c"])).toEqual(["Salut !", "a", "b"]);
     expect(sanitizeButtons(["Oui, carrément ça me va", "Non"])).toEqual(["Oui, carrément ça m…", "Non"]);
     expect(Buffer.byteLength(truncateBytes("é".repeat(800), 990))).toBeLessThanOrEqual(990);
+  });
+
+  it("reconnaît la présentation en IA sans se faire piéger par « j'ai »", () => {
+    expect(hasDisclosure("Moi c'est Nova, l'IA de YD Studio")).toBe(true);
+    expect(hasDisclosure("I'm Nova, YD Studio's AI assistant")).toBe(true);
+    expect(hasDisclosure("Je suis une intelligence artificielle")).toBe(true);
+    expect(hasDisclosure("Super, j'ai bien compris ton projet")).toBe(false);
+    expect(hasDisclosure("Tu vas voir, ça vaut le détour, j'ai hâte")).toBe(false);
+  });
+
+  it("ajoute la présentation oubliée sans supprimer de bulle", () => {
+    const vars = { ASSISTANT_NAME: "Nova", STUDIO_NAME: "YD Studio" };
+    expect(ensureDisclosure(["Top projet !", "Il sert à quoi ?"], true, vars)).toEqual(["Moi c'est Nova, l'IA de YD Studio. L'équipe suit nos échanges.", "Top projet !", "Il sert à quoi ?"]);
+    const three = ensureDisclosure(["a", "b", "c ?"], true, vars);
+    expect(three).toHaveLength(3);
+    expect(three[0]).toMatch(/^Moi c'est Nova, l'IA de YD Studio\. .* a$/);
+    expect(three[2]).toBe("c ?");
+    expect(ensureDisclosure(["Salut"], false, vars)).toEqual(["Salut"]);
+  });
+
+  it("lit le JSON même entouré de texte ou d'accolades parasites", () => {
+    expect(parseJsonLoose('{"a":1}')).toEqual({ a: 1 });
+    expect(parseJsonLoose("Voici :\n```json\n{\"a\":2}\n```")).toEqual({ a: 2 });
+    expect(parseJsonLoose('Je réfléchis {pas du json} puis {"messages":["ok }"],"n":3}')).toEqual({ messages: ["ok }"], n: 3 });
+    expect(() => parseJsonLoose("rien du tout")).toThrow();
+  });
+
+  it("garde les champs valides de la fiche et conseille l'étape suivante", () => {
+    expect(lenientFiche({ prenom: "Léa", budget_estime_eur: "8000", stade_projet: "n'importe quoi", fonctionnalites: "pas une liste" })).toEqual({ prenom: "Léa", budget_estime_eur: 8000 });
+    expect(ficheAdvice({ projet: "x", cible: "y", fonctionnalites: ["a", "b"] }, "ok", false).suite).toMatch(/lancer_ebauche/);
+    expect(ficheAdvice({}, "inconnu", false).manquants).toContain("le budget");
+  });
+
+  it("construit la demande de relance avec la fiche et la conversation", () => {
+    const text = relanceRequest({
+      numero: 2,
+      total: 2,
+      now: new Date("2026-10-12T08:00:00Z"),
+      lead: { stage: "decouverte", budget_status: "inconnu", score: 7, fiche: { prenom: "Léa" }, summary: null },
+      contact: { username: "lea", name: null },
+      history: [{ direction: "entrant", author: "prospect", text: "Salut", status: "recu", created_at: "2026-10-11T18:00:00Z" }],
+      assistantName: "Nova",
+      timezone: "Europe/Paris",
+    });
+    expect(text).toContain("Relance n°2 sur 2 (la dernière).");
+    expect(text).toContain("Prospect : Salut");
+    expect(text).toContain('"prenom":"Léa"');
   });
 
   it("neutralise le HTML des maquettes", () => {

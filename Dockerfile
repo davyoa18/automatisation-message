@@ -7,6 +7,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
 COPY tests ./tests
+COPY labo ./labo
 RUN npx tsc -p tsconfig.json
 
 FROM mcr.microsoft.com/playwright:v1.64.0-noble

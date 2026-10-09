@@ -3,44 +3,64 @@
  * conseillée et consignes renvoyées au modèle. Partagée par le moteur (src/ai/tools.ts) et par
  * le Labo (labo/), pour que les deux guident l'IA avec exactement les mêmes mots.
  */
-import { z } from "zod";
 import type { BudgetStatus, Fiche, Stage } from "../domain.js";
 import type { FichePatch } from "./scoring.js";
 
-const FichePatchSchema = z
-  .object({
-    prenom: z.string(),
-    projet: z.string(),
-    description: z.string(),
-    cible: z.string(),
-    probleme: z.string(),
-    fonctionnalites: z.array(z.string()),
-    stade_projet: z.enum(["idee", "maquette", "prototype", "app_existante", "business_existant", "autre"]),
-    role: z.string(),
-    societe_creee: z.boolean(),
-    financement: z.array(z.string()),
-    montant_leve_eur: z.coerce.number(),
-    budget_declare: z.string(),
-    budget_estime_eur: z.coerce.number(),
-    budget_suffisant: z.enum(["oui", "non", "incertain"]),
-    paiement_plusieurs_fois: z.boolean(),
-    echeance: z.string(),
-    decisionnaire: z.boolean(),
-    email: z.string(),
-    telephone: z.string(),
-    site_web: z.string(),
-    objections: z.array(z.string()),
-    signaux: z.array(z.string()),
-    notes: z.string(),
-  })
-  .partial();
+type FieldRule = "texte" | "textes" | "booleen" | "nombre" | readonly string[];
+
+/** Type attendu de chaque champ de `maj_fiche` (sans dépendance : ce module tourne aussi dans le navigateur). */
+const FICHE_RULES: Record<keyof FichePatch, FieldRule> = {
+  prenom: "texte",
+  projet: "texte",
+  description: "texte",
+  cible: "texte",
+  probleme: "texte",
+  fonctionnalites: "textes",
+  plateformes: "texte",
+  stade_projet: ["idee", "maquette", "prototype", "app_existante", "business_existant", "autre"],
+  role: "texte",
+  societe_creee: "booleen",
+  financement: "textes",
+  montant_leve_eur: "nombre",
+  budget_declare: "texte",
+  budget_estime_eur: "nombre",
+  budget_suffisant: ["oui", "non", "incertain"],
+  paiement_plusieurs_fois: "booleen",
+  echeance: "texte",
+  decisionnaire: "booleen",
+  email: "texte",
+  telephone: "texte",
+  site_web: "texte",
+  objections: "textes",
+  signaux: "textes",
+  notes: "texte",
+};
+
+function checkField(rule: FieldRule, value: unknown): { ok: true; value: unknown } | { ok: false } {
+  if (Array.isArray(rule)) return typeof value === "string" && rule.includes(value) ? { ok: true, value } : { ok: false };
+  switch (rule) {
+    case "texte":
+      return typeof value === "string" ? { ok: true, value } : { ok: false };
+    case "textes":
+      return Array.isArray(value) && value.every((v) => typeof v === "string") ? { ok: true, value } : { ok: false };
+    case "booleen":
+      return typeof value === "boolean" ? { ok: true, value } : { ok: false };
+    case "nombre": {
+      const n = typeof value === "number" ? value : typeof value === "string" || typeof value === "boolean" ? Number(value) : Number.NaN;
+      return Number.isFinite(n) ? { ok: true, value: n } : { ok: false };
+    }
+  }
+  return { ok: false };
+}
 
 /** Garde ce qui est valide champ par champ : une valeur mal typée ne fait pas perdre les autres. */
 export function lenientFiche(input: Record<string, unknown>): FichePatch {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(input)) {
-    const one = FichePatchSchema.safeParse({ [k]: v });
-    if (one.success && k in one.data) out[k] = (one.data as Record<string, unknown>)[k];
+    const rule = (FICHE_RULES as Record<string, FieldRule | undefined>)[k];
+    if (!rule || v === undefined) continue;
+    const checked = checkField(rule, v);
+    if (checked.ok) out[k] = checked.value;
   }
   return out as FichePatch;
 }

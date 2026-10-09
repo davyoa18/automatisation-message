@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { buildLabo } from "../scripts/build-labo.js";
 import { loadConfig } from "../src/config.js";
 import { loadStudio } from "../src/studio/knowledge.js";
 import { seededRng } from "../src/util/pure.js";
@@ -210,4 +214,16 @@ describe("Labo : prospect simulé", () => {
     expect(parsePersona({ messages: ["  ok  ", "", "merci"], fin: true })).toEqual({ messages: ["ok", "merci"], fin: true });
     expect(parsePersona('{"messages":["salut"],"fin":false}')).toEqual({ messages: ["salut"], fin: false });
   });
+});
+
+describe("Labo : construction de la page", () => {
+  it("produit une page autonome avec les données et le script, sans balise de squelette", async () => {
+    const out = path.join(mkdtempSync(path.join(tmpdir(), "labo-")), "labo.html");
+    const { html } = await buildLabo({ out, env: {} as NodeJS.ProcessEnv });
+    expect(html.startsWith("<title>Labo Nova</title>")).toBe(true);
+    expect(html).not.toMatch(/<!doctype|<html|<body|LABO:DATA|LABO:SCRIPT/i);
+    expect(html).toContain("window.__LABO_DATA__=");
+    expect(html).toContain("Tu es Nova, l");
+    expect(Buffer.byteLength(html)).toBeLessThan(400_000);
+  }, 30_000);
 });

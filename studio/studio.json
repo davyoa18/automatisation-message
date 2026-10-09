@@ -1,0 +1,15 @@
+{
+  "nom": "YD Studio",
+  "site": "https://yd-studio.fr",
+  "assistant": "Nova",
+  "pays": "France",
+  "langue": "français",
+  "budget_minimum_eur": 5000,
+  "paiement_plusieurs_fois": true,
+  "delai_livraison_jours": 21,
+  "capacite_projets_par_mois": "4 à 5",
+  "duree_appel_minutes": 10,
+  "plateforme": "iOS natif (Swift / SwiftUI)",
+  "taille_equipe": "4 à 5 personnes",
+  "horaires_appels": "du lundi au vendredi, de 9 h à 19 h (heure de Paris)"
+}

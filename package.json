@@ -1,0 +1,44 @@
+{
+  "name": "yd-moteur-dm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Moteur maison d'automatisation des DM Instagram de YD Studio : IA conversationnelle, relances, ébauches et cockpit.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/src/main.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "simulate": "tsx src/simulator/cli.ts",
+    "eval": "tsx src/simulator/eval.ts",
+    "ig:setup": "tsx src/instagram/setup-cli.ts",
+    "mcp": "tsx src/mcp/server.ts",
+    "prospects:scan": "tsx src/prospects/cli.ts",
+    "studio:import": "tsx src/studio/import-site.ts",
+    "labo:build": "tsx scripts/build-labo.ts",
+    "db:migrate": "tsx src/db/migrate-cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@electric-sql/pglite": "^0.5.8",
+    "@hono/node-server": "^2.1.4",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "fast-xml-parser": "^5.11.2",
+    "hono": "^4.13.13",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5",
+    "playwright": "^1.64.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

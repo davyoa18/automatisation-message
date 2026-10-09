@@ -14,7 +14,12 @@ import {
   awaitingNova,
   cancelBubbles,
   correctionRequest,
+  ebaucheBriefInput,
+  ebaucheScreensInput,
   newState,
+  readBrief,
+  readScreens,
+  recordEbauche,
   novaRequest,
   parseNovaReply,
   parsePersona,
@@ -172,6 +177,34 @@ describe("Labo : outils et parcours", () => {
     const { rec } = reply(state, { outils: [], messages: ["Je suis Nova, l'IA de YD Studio.", "Une app de fidélité, bonne idée.", "Combien de clients par jour ?"], boutons: [], relance_utile: true, note_equipe: "" });
     expect(cancelBubbles(state, rec.id, 1)).toBe(2);
     expect(state.messages.filter((m) => m.status === "annule")).toHaveLength(2);
+  });
+});
+
+describe("Labo : ébauche", () => {
+  it("envoie au générateur la même entrée que la production et marque l'ébauche prête", () => {
+    const state = newState(scenarioById("sarah"), T0);
+    expect(ebaucheBriefInput(state, data)).toBeNull();
+    reply(state, {
+      outils: [
+        { nom: "maj_fiche", arguments: { prenom: "Sarah", projet: "Maternia", cible: "futures mamans", fonctionnalites: ["suivi", "visio"], budget_suffisant: "oui" } },
+        { nom: "lancer_ebauche", arguments: { resume: "Suivi de grossesse", fonctionnalites_cles: ["suivi", "visio"], ambiance_visuelle: "douce" } },
+      ],
+      messages: ["Moi c'est Nova, l'IA de YD Studio."],
+      boutons: [],
+      relance_utile: false,
+      note_equipe: "",
+    });
+    const input = ebaucheBriefInput(state, data)!;
+    expect(input.startsWith(data.prompts.ebaucheBrief)).toBe(true);
+    expect(input).toContain('"resume": "Suivi de grossesse"');
+    expect(input).toContain('"prenom": "Sarah"');
+    const brief = readBrief('{"nom_app":"Maternia","promesse":"Une sage-femme dans la poche","ecrans":[{"titre":"Accueil","role":"r"}]}')!;
+    expect(ebaucheScreensInput(brief, data)).toContain('"nom_app": "Maternia"');
+    const ecrans = readScreens('```json\n{"ecrans":[{"titre":"Accueil","html":"<script>x</script><p>ok</p>"}]}\n```');
+    expect(ecrans).toEqual([{ titre: "Accueil", html: "<p>ok</p>" }]);
+    recordEbauche(state, { brief, ecrans, modelLabel: "Opus 5.5", durationMs: 60_000, at: T0 + 60_000 });
+    expect(state.ebauche?.genere?.brief.nom_app).toBe("Maternia");
+    expect(state.events.at(-1)?.type).toBe("ebauche_prete");
   });
 });
 

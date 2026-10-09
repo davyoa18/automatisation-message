@@ -28,6 +28,8 @@ export function buildLaboData(cfg: Config, studio: Studio, now = new Date()): La
       conversation: studio.prompt("conversation"),
       relance: studio.prompt("relance"),
       analyse: studio.prompt("analyse"),
+      ebaucheBrief: studio.prompt("ebauche-brief"),
+      ebaucheEcrans: studio.prompt("ebauche-ecrans"),
     },
     tools: agentTools(studio).map((t) => ({
       name: t.name,

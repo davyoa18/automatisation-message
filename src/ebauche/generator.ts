@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { Config } from "../config.js";
 import type { Db } from "../db/client.js";
 import type { EbaucheBrief } from "../domain.js";
@@ -7,6 +6,7 @@ import { type Llm, parseJsonLoose, textOf } from "../ai/llm.js";
 import { getEbauche, storeMedia, updateEbauche } from "../db/repo/misc.js";
 import type { Renderer } from "./render.js";
 import { log } from "../logger.js";
+import { parseBrief, parseScreens } from "./screens.js";
 import { errorMessage } from "../util/index.js";
 
 export const BRIEF_SCHEMA = {
@@ -57,20 +57,6 @@ export const BRIEF_SCHEMA = {
   additionalProperties: false,
 };
 
-const BriefZ = z.object({
-  nom_app: z.string(),
-  promesse: z.string(),
-  cible: z.string(),
-  probleme: z.string(),
-  fonctionnalites_mvp: z.array(z.string()),
-  parcours_principal: z.array(z.string()),
-  ecrans: z.array(z.object({ titre: z.string(), role: z.string() })).min(1),
-  direction_artistique: z.object({ ambiance: z.string(), couleurs: z.array(z.string()), typographie: z.string() }),
-  perimetre_21_jours: z.array(z.string()),
-  questions_pour_l_appel: z.array(z.string()),
-  points_de_vigilance: z.array(z.string()),
-});
-
 const SCREENS_SCHEMA = {
   type: "object",
   properties: {
@@ -88,17 +74,7 @@ const SCREENS_SCHEMA = {
   additionalProperties: false,
 };
 
-const ScreensZ = z.object({ ecrans: z.array(z.object({ titre: z.string(), html: z.string() })).min(1) });
-
-/** Retire tout ce qui pourrait exécuter du code ou charger une ressource externe. */
-export function sanitizeScreenHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<(iframe|object|embed|link|meta|base)[^>]*>/gi, "")
-    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/url\(\s*['"]?(?!data:)[^)]*\)/gi, "none")
-    .replace(/(src|href)\s*=\s*("|')(?!data:|#)[^"']*\2/gi, "");
-}
+export { sanitizeScreenHtml } from "./screens.js";
 
 export interface EbaucheDeps {
   db: Db;
@@ -119,7 +95,9 @@ export async function generateBrief(deps: Pick<EbaucheDeps, "llm" | "cfg" | "stu
     maxTokens: 8000,
     conversationId,
   });
-  return BriefZ.parse(parseJsonLoose(textOf(res.content))) as EbaucheBrief;
+  const brief = parseBrief(parseJsonLoose(textOf(res.content)));
+  if (!brief) throw new Error("Brief d'ébauche incomplet");
+  return brief;
 }
 
 export async function generateScreens(
@@ -137,8 +115,9 @@ export async function generateScreens(
     maxTokens: 48000,
     conversationId,
   });
-  const parsed = ScreensZ.parse(parseJsonLoose(textOf(res.content)));
-  return parsed.ecrans.slice(0, 3).map((e) => ({ titre: e.titre, html: sanitizeScreenHtml(e.html) }));
+  const screens = parseScreens(parseJsonLoose(textOf(res.content)));
+  if (!screens.length) throw new Error("Aucun écran exploitable dans la réponse");
+  return screens;
 }
 
 /** Génère l'ébauche complète : brief, écrans HTML, images. Idempotent sur un échec partiel. */

@@ -245,6 +245,34 @@ details.prompt pre { margin: 10px 0 0; max-height: 360px; overflow: auto; backgr
 .setting { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
 .setting input { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 7px 10px; font-size: 13px; color: var(--ink); width: 100%; }
 
+/* ------------------------------ Ébauche ------------------------------ */
+.ebauche .eb-name { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+.ebauche .eb-promise { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); }
+.swatches { display: flex; gap: 6px; margin: 10px 0; }
+.swatches i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); }
+.thumbs { display: flex; gap: 8px; margin: 6px 0 10px; overflow-x: auto; padding-bottom: 4px; }
+.thumbs button { border: 0; padding: 0; background: transparent; border-radius: 14px; flex: none; }
+.phone-slot { position: relative; overflow: hidden; flex: none; border-radius: 9% / 4.4%; filter: drop-shadow(0 14px 22px rgba(15, 26, 24, .22)); }
+.phone-host { width: 418px; height: 872px; transform-origin: top left; position: absolute; top: 0; left: 0; }
+.eb-progress { display: grid; gap: 6px; margin: 8px 0; font-size: 13px; }
+.eb-progress span { display: flex; gap: 8px; align-items: center; color: var(--faint); }
+.eb-progress span.on { color: var(--ink); }
+.eb-progress span.done { color: var(--ok); }
+.eb-progress span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .7; }
+.viewer { position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 96%, transparent); backdrop-filter: blur(8px); overflow-y: auto; padding-block: calc(env(safe-area-inset-top, 0px) + 20px) 40px; padding-inline: 16px; }
+.viewer-inner { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.viewer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.viewer-head h2 { margin: 0; font-family: var(--display); font-size: 34px; letter-spacing: -.02em; line-height: 1.05; }
+.viewer-head p { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.phones { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
+.phones figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.phones figcaption { font-size: 13px; color: var(--muted); text-align: center; max-width: 30ch; }
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.brief-grid section { background: var(--raised); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 13.5px; min-width: 0; }
+.brief-grid h3 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.brief-grid ul, .brief-grid ol { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.brief-grid p { margin: 0; }
+
 /* ------------------------------ Écrans moyens et petits ------------------------------ */
 @media (max-width: 1180px) {
   .labo { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "top top" "list list" "chat dossier"; }
@@ -328,6 +356,7 @@ details.prompt pre { margin: 10px 0 0; max-height: 360px; overflow: auto; backgr
   <aside class="dossier" aria-label="Fiche du prospect">
     <section class="panel" id="stage-panel"></section>
     <section class="panel fiche" id="fiche-panel"></section>
+    <section class="panel ebauche" id="ebauche-panel" hidden></section>
     <section class="panel journal" id="journal-panel"></section>
     <section class="panel" id="analyse-panel"></section>
     <section class="panel" id="share-panel"></section>
@@ -342,5 +371,6 @@ details.prompt pre { margin: 10px 0 0; max-height: 360px; overflow: auto; backgr
     </details>
   </aside>
 </div>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="viewer-title" hidden></div>
 <!-- LABO:DATA -->
 <!-- LABO:SCRIPT -->

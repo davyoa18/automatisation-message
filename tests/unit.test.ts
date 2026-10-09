@@ -9,6 +9,7 @@ import { ensureDisclosure, hasDisclosure, relanceRequest } from "../src/ai/conve
 import { ficheAdvice, lenientFiche } from "../src/ai/tool-logic.js";
 import { parseJsonLoose } from "../src/util/json.js";
 import { sanitizeScreenHtml } from "../src/ebauche/generator.js";
+import { parseBrief, parseScreens } from "../src/ebauche/screens.js";
 import { suggestSlots } from "../src/util/slots.js";
 import { hmacSha256Hex, seededRng, truncateBytes } from "../src/util/index.js";
 import { loadConfig } from "../src/config.js";
@@ -170,6 +171,24 @@ describe("sorties de l'IA", () => {
     expect(text).toContain("Relance n°2 sur 2 (la dernière).");
     expect(text).toContain("Prospect : Salut");
     expect(text).toContain('"prenom":"Léa"');
+  });
+
+  it("neutralise aussi les formulaires, imports et liens data: non image", () => {
+    const html = sanitizeScreenHtml(`<style>@import "https://evil/x.css"; .a{color:red}</style><form action="https://evil/post"><button formaction="https://evil">Go</button></form><a href="data:text/html,<b>x</b>">lien</a><img src="data:image/png;base64,AAA">`);
+    expect(html).not.toMatch(/evil|<form|formaction|data:text/);
+    expect(html).toContain("data:image/png");
+    expect(html).toContain(".a{color:red}");
+  });
+
+  it("lit un brief et des écrans d'ébauche en tolérant les champs manquants", () => {
+    expect(parseBrief({ nom_app: "X", promesse: "" })).toBeNull();
+    const brief = parseBrief({ nom_app: "Maternia", promesse: "Suivi", ecrans: [{ titre: "Accueil", role: "r" }, "bruit"], direction_artistique: { couleurs: ["#fff", 3] } });
+    expect(brief?.ecrans).toEqual([{ titre: "Accueil", role: "r" }]);
+    expect(brief?.direction_artistique).toEqual({ ambiance: "", couleurs: ["#fff"], typographie: "" });
+    expect(brief?.fonctionnalites_mvp).toEqual([]);
+    const screens = parseScreens({ ecrans: [{ titre: "A", html: "<div onclick='x()'>a</div>" }, { titre: "B" }, { titre: "C", html: "c" }, { titre: "D", html: "d" }, { titre: "E", html: "e" }] });
+    expect(screens.map((e) => e.titre)).toEqual(["A", "C", "D"]);
+    expect(screens[0]!.html).toBe("<div>a</div>");
   });
 
   it("neutralise le HTML des maquettes", () => {

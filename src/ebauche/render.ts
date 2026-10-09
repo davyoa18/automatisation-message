@@ -2,6 +2,9 @@ import { existsSync } from "node:fs";
 import type { Browser } from "playwright";
 import type { EbaucheBrief } from "../domain.js";
 import { log } from "../logger.js";
+import { esc, FRAME_CSS, phoneFrame } from "./screens.js";
+
+export { phoneFrame } from "./screens.js";
 
 export interface RenderedEbauche {
   screens: Buffer[];
@@ -13,32 +16,6 @@ export interface Renderer {
   render(screens: { titre: string; html: string }[], brief: EbaucheBrief, studioName: string): Promise<RenderedEbauche>;
   close(): Promise<void>;
 }
-
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-
-/** Coque d'iPhone dessinée en CSS autour d'un écran généré (barre d'état, îlot, indicateur d'accueil). */
-export function phoneFrame(screenHtml: string, dark = false): string {
-  const ink = dark ? "#fff" : "#111";
-  return `<div class="phone"><div class="screen">
-  <div class="statusbar" style="color:${ink}"><span>9:41</span><span class="island"></span><span class="icons">
-    <svg width="18" height="11" viewBox="0 0 18 11"><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="6" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="8" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg>
-    <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><rect x="23" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".4"/></svg>
-  </span></div>
-  <div class="content">${screenHtml}</div>
-  <div class="home" style="background:${ink}"></div>
-</div></div>`;
-}
-
-const FRAME_CSS = `
-*{box-sizing:border-box} html,body{margin:0;padding:0;background:transparent}
-.phone{width:418px;height:872px;border-radius:64px;background:#0b0b0d;padding:14px;box-shadow:0 30px 60px rgba(0,0,0,.28), inset 0 0 0 2px #2a2a2e}
-.screen{position:relative;width:390px;height:844px;border-radius:50px;overflow:hidden;background:#fff}
-.statusbar{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 32px 0 40px;font:600 16px -apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-serif;z-index:20;pointer-events:none;color:#fff!important;mix-blend-mode:difference}
-.island{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000}
-.icons{display:flex;gap:6px;align-items:center}
-.content{position:absolute;inset:0;overflow:hidden}
-.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;border-radius:3px;opacity:.85;z-index:20;background:#fff!important;mix-blend-mode:difference}
-`;
 
 function boardHtml(phones: string[], brief: EbaucheBrief, studioName: string, blur: boolean): string {
   const colors = brief.direction_artistique?.couleurs ?? [];

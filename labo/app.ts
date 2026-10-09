@@ -8,6 +8,7 @@ import * as rt from "./runtime.js";
 import { STAGE_LABELS, type Fiche, type Stage, type Temperature } from "../src/domain.js";
 import { ficheAdvice } from "../src/ai/tool-logic.js";
 import { FALLBACK_REPLY } from "../src/ai/conversation-context.js";
+import { FRAME_CSS, phoneFrame } from "../src/ebauche/screens.js";
 
 /* ------------------------------ Capacités de la page ------------------------------ */
 
@@ -96,7 +97,9 @@ const variants = new Map<string, Variant>();
 const replyBase = new Map<string, rt.LaboState>();
 const revealed = new Map<string, number>();
 let notes: Note[] = [];
-let job: { kind: "nova" | "persona" | "relance" | "analyse" | "compare" | "save"; ctl: AbortController } | null = null;
+let job: { kind: "nova" | "persona" | "relance" | "analyse" | "compare" | "save" | "ebauche"; ctl: AbortController } | null = null;
+let ebaucheStep: "brief" | "ecrans" | null = null;
+let ebaucheOpenAvis: string | null = null;
 let delivering: { replyId: string; ctl: AbortController } | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let typing = false;
@@ -795,6 +798,8 @@ function renderHeader() {
 
 function selectScenario(scenario: Scenario) {
   interrupt();
+  closeViewer();
+  ebaucheOpenAvis = null;
   if (rt.sentMessages(state).length > 1) pushUndo();
   state = rt.newState(scenario, Date.now());
   notes = [];
@@ -1136,7 +1141,7 @@ function renderFichePanel() {
   }
   const status = rt.ebaucheStatus(state, now());
   if (status && state.ebauche) {
-    rows.push(h("dt", { text: "Ébauche" }), h("dd", { text: status === "prete" ? "prête, à montrer pendant l'appel" : `en préparation (prête vers ${fmtTime(state.ebauche.readyAt)})` }));
+    rows.push(h("dt", { text: "Ébauche" }), h("dd", { text: state.ebauche.genere ? `${state.ebauche.genere.brief.nom_app}, prête à montrer pendant l'appel` : status === "prete" ? "prête, à montrer pendant l'appel" : `en préparation (prête vers ${fmtTime(state.ebauche.readyAt)})` }));
   }
   if (state.lead.rdv_note) rows.push(h("dt", { text: "Rendez-vous" }), h("dd", { text: state.lead.rdv_note }));
   if (state.lead.next_action) rows.push(h("dt", { text: "À faire" }), h("dd", { text: state.lead.next_action }));
@@ -1245,9 +1250,197 @@ function renderPromptPanel() {
   if (document.activeElement !== booking) booking.value = settings.bookingUrl;
 }
 
+/* ------------------------------ Ébauche ------------------------------ */
+
+/** Un écran généré, dans sa coque d'iPhone, isolé du reste de la page (Shadow DOM) et réduit à l'échelle voulue. */
+function phoneNode(html: string, scale: number): HTMLElement {
+  const slot = h("div", { class: "phone-slot", style: `width:${Math.round(418 * scale)}px;height:${Math.round(872 * scale)}px` });
+  const host = h("div", { class: "phone-host", style: `transform:scale(${scale})` });
+  const root = host.attachShadow({ mode: "open" });
+  // L'ombre portée est dessinée par le conteneur : celle de la coque serait coupée par le recadrage.
+  root.innerHTML = `<style>${FRAME_CSS}.phone{box-shadow:inset 0 0 0 2px #2a2a2e}</style>${phoneFrame(html)}`;
+  slot.append(host);
+  return slot;
+}
+
+const OPUS_EBAUCHE: rt.ModelChoice = { ...rt.MODEL_CHOICES.opus, effort: "medium" };
+
+async function generateEbauche() {
+  const input = rt.ebaucheBriefInput(state, data);
+  if (!sample || !input) return;
+  const ctl = startJob("ebauche");
+  const started = performance.now();
+  ebaucheStep = "brief";
+  setStatus("Opus 5.5 écrit le brief de l'app…");
+  renderDossier();
+  try {
+    const r1 = await callSample(input, OPUS_EBAUCHE, ctl.signal);
+    const brief = rt.readBrief(r1.text);
+    if (!brief) throw { code: r1.truncated ? "truncated" : "invalid_json" };
+    ebaucheStep = "ecrans";
+    setStatus(`Opus 5.5 dessine les écrans de ${brief.nom_app}…`);
+    renderDossier();
+    const r2 = await callSample(rt.ebaucheScreensInput(brief, data), OPUS_EBAUCHE, ctl.signal);
+    const ecrans = rt.readScreens(r2.text);
+    if (!ecrans.length) throw { code: r2.truncated ? "truncated" : "invalid_json" };
+    rt.recordEbauche(state, {
+      brief,
+      ecrans,
+      modelLabel: rt.answeredBy(OPUS_EBAUCHE, r2.modelApplied, r2.modelTierApplied),
+      durationMs: Math.round(performance.now() - started),
+      at: now(),
+    });
+    persist();
+    setStatus("");
+    openViewer();
+  } catch (e) {
+    if ((e as SampleError)?.code === "truncated") setStatus("Les écrans étaient trop longs pour une seule réponse : relance la génération.", true);
+    else handleError(e, "Génération de l'ébauche");
+  } finally {
+    ebaucheStep = null;
+    endJob(ctl);
+    renderDossier();
+    renderJournal();
+  }
+}
+
+function renderEbauchePanel() {
+  const panel = $("ebauche-panel");
+  const eb = state.ebauche;
+  if (!eb) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  const gen = eb.genere;
+  const content: Child[] = [h("h2", {}, "Ébauche", h("small", { text: gen ? `${gen.modelLabel} · ${fmtSec(gen.durationMs)}` : "lancée par Nova" }))];
+  if (gen) {
+    const b = gen.brief;
+    content.push(h("div", { class: "eb-name", text: b.nom_app }), h("p", { class: "eb-promise", text: b.promesse }));
+    if (b.direction_artistique.couleurs.length) {
+      content.push(h("div", { class: "swatches", "aria-label": "Palette" }, ...b.direction_artistique.couleurs.slice(0, 5).map((c) => h("i", { title: c, style: `background:${/^#[0-9a-f]{3,8}$/i.test(c) ? c : "transparent"}` }))));
+    }
+    content.push(
+      h("div", { class: "thumbs" }, ...gen.ecrans.map((e, i) => h("button", { type: "button", title: `Voir l'écran ${i + 1} : ${e.titre}`, onclick: () => openViewer() }, phoneNode(e.html, 0.22)))),
+      h("div", { class: "row-btns" }, h("button", { type: "button", class: "ghost", text: "Voir l'ébauche en grand", onclick: () => openViewer() })),
+    );
+    const key = `eb:${state.lead.ebauche_id ?? ""}`;
+    const saved = avis.get(key);
+    const box = h("div", { class: "feedback", style: "justify-content:flex-start;margin-top:10px" });
+    if (saved) box.append(h("span", { class: "saved", text: saved === "juste" ? "Avis enregistré : juste" : "Avis enregistré : à revoir" }));
+    else if (db && canWrite) {
+      if (ebaucheOpenAvis !== null) {
+        const area = h("textarea", { id: "avis-ebauche", placeholder: "Ce qui ne va pas dans cette ébauche", "aria-label": "Commentaire sur l'ébauche" }) as HTMLTextAreaElement;
+        area.value = ebaucheOpenAvis;
+        area.addEventListener("input", () => (ebaucheOpenAvis = area.value));
+        box.append(
+          h(
+            "div",
+            { class: "avis-form", style: "width:100%" },
+            area,
+            h("div", { class: "row" }, h("button", { type: "button", class: "mini", text: "Annuler", onclick: () => { ebaucheOpenAvis = null; renderEbauchePanel(); } }), h("button", { type: "button", class: "mini", "aria-pressed": "true", text: "Enregistrer l'avis", onclick: () => void saveEbaucheAvis("a_revoir", area.value) })),
+          ),
+        );
+      } else {
+        box.append(
+          h("button", { type: "button", class: "mini", text: "Juste", onclick: () => void saveEbaucheAvis("juste", "") }),
+          h("button", { type: "button", class: "mini", text: "À revoir", onclick: () => { ebaucheOpenAvis = ""; renderEbauchePanel(); } }),
+        );
+      }
+    }
+    content.push(box);
+  } else {
+    content.push(
+      h("p", { class: "eb-promise", text: eb.resume || "Projet décrit par le prospect." }),
+      eb.fonctionnalites.length ? h("div", { class: "todo" }, "Fonctionnalités :", ...eb.fonctionnalites.map((f) => h("span", { text: f }))) : null,
+    );
+    if (ebaucheStep) {
+      content.push(
+        h(
+          "div",
+          { class: "eb-progress", role: "status" },
+          h("span", { class: ebaucheStep === "brief" ? "on" : "done", text: "Le brief : promesse, parcours, direction artistique" }),
+          h("span", { class: ebaucheStep === "ecrans" ? "on" : "", text: "Les 3 écrans iPhone" }),
+        ),
+      );
+    } else {
+      content.push(
+        h("div", { class: "row-btns", style: "margin-top:10px" }, h("button", { type: "button", class: "primary", text: "Générer l'ébauche avec Opus 5.5", disabled: !sample || !!job, onclick: () => void generateEbauche() })),
+        h("p", { class: "empty", style: "margin-top:8px", text: "Le brief puis les 3 écrans, en 1 à 3 minutes. En production, le moteur la génère seul dès que Nova la lance (avec une réflexion plus poussée), et l'équipe la montre pendant l'appel." }),
+      );
+    }
+  }
+  fill(panel, ...content);
+}
+
+async function saveEbaucheAvis(verdict: "juste" | "a_revoir", commentaire: string) {
+  const gen = state.ebauche?.genere;
+  if (!gen) return;
+  const ok = await saveDoc("avis", {
+    verdict,
+    commentaire: commentaire.trim(),
+    scenario: state.scenarioId,
+    modele: gen.modelLabel,
+    type_reponse: "ebauche",
+    brief: gen.brief,
+    ecrans: gen.ecrans,
+    conversation: transcriptUntil(now()),
+    fiche: state.lead.fiche,
+  });
+  if (ok) {
+    avis.set(`eb:${state.lead.ebauche_id ?? ""}`, verdict);
+    ebaucheOpenAvis = null;
+    persist();
+  }
+  renderEbauchePanel();
+}
+
+function openViewer() {
+  const gen = state.ebauche?.genere;
+  if (!gen) return;
+  const viewer = $("viewer");
+  const b = gen.brief;
+  const scale = Math.min(0.72, Math.max(0.42, (Math.min(window.innerWidth, 1320) - 120) / 3 / 418));
+  const list = (title: string, items: string[], ordered = false) =>
+    items.length ? h("section", {}, h("h3", { text: title }), ordered ? h("ol", {}, ...items.map((i) => h("li", { text: i }))) : h("ul", {}, ...items.map((i) => h("li", { text: i })))) : null;
+  const close = h("button", { type: "button", class: "ghost", id: "viewer-close", text: "Fermer", onclick: () => closeViewer() });
+  fill(
+    viewer,
+    h(
+      "div",
+      { class: "viewer-inner" },
+      h("div", { class: "viewer-head" }, h("div", {}, h("h2", { id: "viewer-title", text: b.nom_app }), h("p", { text: b.promesse })), close),
+      h("div", { class: "phones" }, ...gen.ecrans.map((e, i) => h("figure", {}, phoneNode(e.html, scale), h("figcaption", { text: `${i + 1}. ${e.titre}${b.ecrans[i]?.role ? ` : ${b.ecrans[i]!.role}` : ""}` })))),
+      h(
+        "div",
+        { class: "brief-grid" },
+        h("section", {}, h("h3", { text: "Pour qui, pour quoi" }), h("p", { text: b.cible }), h("p", { class: "muted", style: "margin-top:6px", text: b.probleme })),
+        h("section", {}, h("h3", { text: "Direction artistique" }), h("p", { text: b.direction_artistique.ambiance }), h("p", { class: "muted", style: "margin-top:6px", text: `${b.direction_artistique.typographie}${b.direction_artistique.couleurs.length ? ` · ${b.direction_artistique.couleurs.join(" ")}` : ""}` })),
+        list("Première version", b.fonctionnalites_mvp),
+        list("Parcours principal", b.parcours_principal, true),
+        list(`Livré en ${data.vars.DELAI_JOURS ?? "21"} jours`, b.perimetre_21_jours),
+        list("Questions pour l'appel", b.questions_pour_l_appel),
+        list("Points de vigilance", b.points_de_vigilance),
+      ),
+    ),
+  );
+  viewer.hidden = false;
+  document.body.style.overflow = "hidden";
+  close.focus();
+}
+
+function closeViewer() {
+  const viewer = $("viewer");
+  if (viewer.hidden) return;
+  viewer.hidden = true;
+  viewer.replaceChildren();
+  document.body.style.overflow = "";
+}
+
 function renderDossier() {
   renderStagePanel();
   renderFichePanel();
+  renderEbauchePanel();
   renderJournal();
   renderAnalysePanel();
   renderSharePanel();
@@ -1290,6 +1483,12 @@ function bindEvents() {
     grow();
     sendProspect(text);
   });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeViewer();
+  });
+  $("viewer").addEventListener("click", (e) => {
+    if (e.target === e.currentTarget) closeViewer();
+  });
   $("persona-btn").addEventListener("click", () => void askPersona());
   $("nova-btn").addEventListener("click", () => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -1317,6 +1516,7 @@ function bindEvents() {
     job?.ctl.abort();
     const previous = undoStack.pop();
     if (!previous) return;
+    closeViewer();
     state = previous;
     revealed.clear();
     notes = notes.filter((n) => n.t <= now());

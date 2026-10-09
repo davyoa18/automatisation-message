@@ -8,7 +8,8 @@
  * réponse JSON (champ `outils`), le Labo les exécute ensuite, et repose la question une fois si un
  * outil a refusé l'action, comme le ferait la boucle de production.
  */
-import { STAGE_LABELS, type BudgetStatus, type Fiche, type Source, type Stage, type Temperature } from "../src/domain.js";
+import { STAGE_LABELS, type BudgetStatus, type EbaucheBrief, type Fiche, type Source, type Stage, type Temperature } from "../src/domain.js";
+import { parseBrief, parseScreens } from "../src/ebauche/screens.js";
 import { advanceStage, computeScore, computeTemperature, deriveBudgetStatus, mergeFiche, stageFromFiche } from "../src/ai/scoring.js";
 import { CONSIGNES, clotureStage, ficheAdvice, lenientFiche, parseRdvDate } from "../src/ai/tool-logic.js";
 import {
@@ -46,7 +47,7 @@ export interface LaboData {
   budgetMin: number;
   timezone: string;
   bookingUrl: string;
-  prompts: { conversation: string; relance: string; analyse: string };
+  prompts: { conversation: string; relance: string; analyse: string; ebaucheBrief: string; ebaucheEcrans: string };
   tools: ToolDefinition[];
   relanceDelaysMs: number[];
   pacing: { profile: "naturel" | "rapide" | "instantane"; debounceSeconds: number };
@@ -123,6 +124,14 @@ export interface NovaReply {
 
 export type EventTone = "info" | "ok" | "warn" | "hot";
 
+export interface EbaucheGeneree {
+  brief: EbaucheBrief;
+  ecrans: { titre: string; html: string }[];
+  modelLabel: string;
+  durationMs: number;
+  at: number;
+}
+
 export interface LaboEvent {
   id: string;
   at: number;
@@ -179,7 +188,16 @@ export interface LaboState {
     opted_out: boolean;
   };
   lead: LaboLead;
-  ebauche: { createdAt: number; readyAt: number; resume: string; fonctionnalites: string[]; ambiance: string } | null;
+  ebauche: {
+    createdAt: number;
+    readyAt: number;
+    resume: string;
+    fonctionnalites: string[];
+    ambiance: string;
+    /** Fiche du prospect au moment du lancement (ce que reçoit le générateur en production). */
+    fiche?: Fiche;
+    genere?: EbaucheGeneree;
+  } | null;
   aiPausedUntil: number | null;
   lastInboundAt: number | null;
   messages: LaboMessage[];
@@ -358,7 +376,7 @@ export function runTool(state: LaboState, data: LaboData, name: string, rawInput
       const resume = String(input.resume ?? "").slice(0, 2000);
       const fonctionnalites = Array.isArray(input.fonctionnalites_cles) ? input.fonctionnalites_cles.map(String).slice(0, 10) : [];
       const ambiance = String(input.ambiance_visuelle ?? "");
-      state.ebauche = { createdAt: now, readyAt: now + EBAUCHE_READY_MS, resume, fonctionnalites, ambiance };
+      state.ebauche = { createdAt: now, readyAt: now + EBAUCHE_READY_MS, resume, fonctionnalites, ambiance, fiche: { ...state.lead.fiche } };
       state.lead.ebauche_id = nextId(state, "eb");
       rescore(state, advanceStage(state.lead.stage, "ebauche"));
       event(state, now, "ebauche_lancee", "Ébauche lancée", "ok", resume);
@@ -859,4 +877,42 @@ export function parsePersona(value: unknown): { messages: string[]; fin: boolean
   if (!value || typeof value !== "object") return { messages: [], fin: false };
   const o = value as Record<string, unknown>;
   return { messages: strings(o.messages).map((s) => s.trim()).filter(Boolean).slice(0, 2), fin: o.fin === true };
+}
+
+/* ------------------------------ Ébauche ------------------------------ */
+
+/** Le brief : même entrée que le générateur de production (resume, fonctionnalités, ambiance, fiche). */
+export function ebaucheBriefInput(state: LaboState, data: LaboData): string | null {
+  const eb = state.ebauche;
+  if (!eb) return null;
+  const input = { resume: eb.resume, fonctionnalites: eb.fonctionnalites, ambiance: eb.ambiance, fiche: eb.fiche ?? state.lead.fiche };
+  return `${data.prompts.ebaucheBrief}\n\n---\n\nVoici ce que l'on sait du projet du prospect :\n\n${JSON.stringify(input, null, 2)}\n\nRéponds uniquement avec l'objet JSON décrit ci-dessus.`;
+}
+
+export function ebaucheScreensInput(brief: EbaucheBrief, data: LaboData): string {
+  return `${data.prompts.ebaucheEcrans}\n\n---\n\nBrief de l'app :\n\n${JSON.stringify(brief, null, 2)}\n\nRéponds uniquement avec l'objet JSON : {"ecrans": [{"titre": "…", "html": "…"}, …]}`;
+}
+
+export function readBrief(text: string): EbaucheBrief | null {
+  try {
+    return parseBrief(parseJsonLoose(text));
+  } catch {
+    return null;
+  }
+}
+
+export function readScreens(text: string): { titre: string; html: string }[] {
+  try {
+    return parseScreens(parseJsonLoose(text));
+  } catch {
+    return [];
+  }
+}
+
+/** Enregistre l'ébauche générée : elle devient « prête », comme en production. */
+export function recordEbauche(state: LaboState, generated: EbaucheGeneree): void {
+  if (!state.ebauche) return;
+  state.ebauche.genere = generated;
+  state.ebauche.readyAt = Math.min(state.ebauche.readyAt, generated.at);
+  event(state, generated.at, "ebauche_prete", "Ébauche prête", "ok", `${generated.brief.nom_app} : ${generated.brief.promesse}`);
 }

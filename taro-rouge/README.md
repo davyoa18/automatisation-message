@@ -27,4 +27,6 @@ Format bodymovin 5.7, images PNG intégrées, compatible lottie-web et lottie-io
 
 Pour regénérer les Lottie après une retouche d'animation : `python3 build.py` (Python 3 avec numpy, scipy, opencv, Pillow). Pour rendre des images : `node render.js livrable/taro_rouge_crie.json sortie/ all 600` (lottie-web et playwright-core).
 
+`rig/` garde les pièces complètes du Taro normal (sans rougeur), réutilisables pour corriger les réactions existantes.
+
 Les étapes 1 et 2 relisent les pièces d'origine extraites de l'idle de Talkana (`tanuki_idle`), dans un dossier `pieces/` non versionné.

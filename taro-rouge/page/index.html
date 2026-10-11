@@ -89,6 +89,37 @@ h1 span{color:var(--brique)}
   border-bottom:1px dashed var(--trait);padding-bottom:6px;min-width:0}
 .fichiers code{background:transparent;padding:0}
 .fichiers span{font:400 12px/1.4 var(--f-mo);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+.parcours{display:grid;gap:var(--pas);grid-template-columns:minmax(0,420px) minmax(0,1fr);align-items:start;
+  background:var(--carte);border:1px solid var(--trait);border-radius:16px;padding:var(--pas);margin-bottom:26px}
+@media (max-width:760px){.parcours{grid-template-columns:minmax(0,1fr)}}
+.parcours .scene{border-radius:12px;cursor:default}
+.etat{display:flex;align-items:center;gap:8px;font:500 12px/1 var(--f-mo);letter-spacing:.08em;text-transform:uppercase;color:var(--doux);margin:0 0 12px}
+.etat i{width:8px;height:8px;border-radius:50%;background:var(--peche);display:inline-block}
+.etat.rouge i{background:var(--brique)}
+.parcours h2{font:900 clamp(20px,2.6vw,26px)/1.15 var(--f-jp);margin:0 0 6px;letter-spacing:-.015em}
+.parcours .aide{margin:0 0 14px;color:var(--doux);font-size:14.5px;max-width:58ch}
+.hardcore{font:900 15px/1 var(--f-jp);letter-spacing:.02em;color:#fff;background:var(--brique);border:0;border-radius:999px;
+  padding:12px 18px;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.hardcore[disabled],.phrase[disabled],.quitter[disabled]{opacity:.42;cursor:not-allowed}
+.familles{display:grid;gap:12px;margin:16px 0 14px}
+.famille{display:grid;gap:7px}
+.famille .etiq b{color:var(--encre);font-weight:600;letter-spacing:.06em}
+.phrases{display:flex;flex-wrap:wrap;gap:7px}
+.phrase{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;border:1px solid var(--trait);background:var(--fond);
+  color:var(--encre);border-radius:10px;padding:8px 11px;cursor:pointer;min-width:0;max-width:100%}
+.phrase:hover:not([disabled]){border-color:var(--brique)}
+.phrase .jp{font:700 15px/1.2 var(--f-jp)}
+.phrase .fr{font-size:12.5px;color:var(--doux)}
+.phrase.va{border-color:var(--brique);box-shadow:inset 0 0 0 1px var(--brique)}
+.quitter{font:500 13px/1 var(--f-ui);border:1px solid var(--trait);background:transparent;color:var(--encre);padding:10px 14px;border-radius:8px;cursor:pointer}
+.quitter:hover:not([disabled]){border-color:var(--brique);color:var(--brique)}
+.journal{font:400 12px/1.5 var(--f-mo);color:var(--doux);margin:12px 0 0;min-height:1.5em}
+.hardcore:focus-visible,.phrase:focus-visible,.quitter:focus-visible{outline:2px solid var(--brique);outline-offset:2px}
+table.carte-r{width:100%;border-collapse:collapse;font-size:13.5px;margin:4px 0 10px}
+table.carte-r th,table.carte-r td{text-align:left;padding:6px 6px 6px 0;border-bottom:1px dashed var(--trait);vertical-align:top;color:var(--doux)}
+table.carte-r th{font:500 11px/1.2 var(--f-mo);letter-spacing:.08em;text-transform:uppercase;color:var(--doux)}
+table.carte-r td b{color:var(--encre);font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -97,7 +128,8 @@ h1 span{color:var(--brique)}
   <p class="marque">Talkana · Taro, version hardcore</p>
   <h1>Taro <span>rouge</span></h1>
   <p class="chapeau">Le même Taro, même sweat, même queue, mais <b>le visage rouge et les sourcils froncés en permanence</b>.
-  Quatre animations : il attend en ruminant, il crie, il pleure de rage, il explose. Touche une scène pour la jouer.</p>
+  Quatre animations (il attend en ruminant, il crie, il pleure de rage, il explose) et deux transitions :
+  la bascule quand on active le mode hardcore, le retour au calme quand on le quitte. Essaie le parcours juste en dessous.</p>
 </header>
 
 <div class="barre">
@@ -107,8 +139,28 @@ h1 span{color:var(--brique)}
     <button type="button" id="t300" data-t="300" aria-pressed="false">au centre · 300 pt</button>
     <button type="button" id="t116" data-t="116" aria-pressed="false">en en-tête · 116 pt</button>
   </div>
-  <span class="etiq droite">4 animations · 30 i/s</span>
+  <span class="etiq droite">4 animations + 2 transitions · 30 i/s</span>
 </div>
+
+<section class="parcours" aria-label="Parcours dans l'app">
+  <button type="button" class="scene" id="p-scene" tabindex="-1" aria-hidden="true">
+    <img class="affiche" src="affiches/normal.jpg" alt="">
+    <div class="boite" id="p-normal"><div class="cadre1254"></div></div>
+    <div class="boite" id="p-rouge" hidden><div class="cadre1254"></div></div>
+    <div class="boite" id="p-reac" hidden><div class="reac"></div></div>
+  </button>
+  <div>
+    <p class="etat" id="p-etat"><i></i><span>Taro normal</span></p>
+    <h2>Le parcours, comme dans l'app</h2>
+    <p class="aide">Taro est dans son état normal. Touche « Taro hardcore » : il bascule et reste énervé.
+    Ensuite, chaque phrase lance la réaction qui lui correspond. <b>Proposition de branchement</b> : les phrases ci-dessous sont des exemples,
+    à remplacer par les vraies répliques de Talkana.</p>
+    <button type="button" class="hardcore" id="p-hardcore">Taro hardcore</button>
+    <div class="familles" id="p-familles"></div>
+    <button type="button" class="quitter" id="p-quitter" disabled>Quitter le mode hardcore</button>
+    <p class="journal" id="p-journal" aria-live="polite"></p>
+  </div>
+</section>
 
 <div class="grille" id="grille"></div>
 
@@ -116,30 +168,44 @@ h1 span{color:var(--brique)}
   <section class="note">
     <h2>Ce qui a été vérifié, image par image</h2>
     <dl class="chiffres">
-      <dt>416</dt><dd>images rendues et contrôlées une à une (les quatre animations en entier)</dd>
+      <dt>532</dt><dd>images rendues et contrôlées une à une (les six animations en entier)</dd>
       <dt>0</dt><dd>bord découpé visible sur Taro : chaque bord du dessin est un trait d'encre</dd>
-      <dt>0</dt><dd>trou dans le corps, même tête levée, agrandie de 30 % ou tournée de 12°</dd>
-      <dt>0,05 %</dt><dd>de pixels qui bougent au raccord de la boucle d'attente (image 119 → 0)</dd>
+      <dt>0</dt><dd>trou dans le corps ; les seuls jours de fond sont ceux du dessin d'origine (sous le menton, entre la queue et la joue quand il lève la tête)</dd>
+      <dt>36 px</dt><dd>de marge minimale avec le bord du cadre (vapeur au sommet du saut), rien n'est coupé</dd>
     </dl>
-    <p>Les pièces d'origine étaient coupées là où l'idle les cachait : brin de queue collé à la tête, mâchoire tranchée,
-    queue ouverte derrière le corps, oreilles soudées. Elles ont été <b>reconstruites entières</b> avant toute animation :
-    oreilles séparées et fermées, menton et cou dessinés, queue prolongée, dos de capuche ajouté sous la tête.</p>
+    <p>Les pièces d'origine étaient coupées là où l'idle les cachait. Elles ont été <b>reconstruites entières</b> avant toute animation,
+    puis une carte de visibilité a vérifié chaque zone qui ne se découvre qu'en mouvement. Dernières corrections : encoche du haut de la queue,
+    jonctions oreilles / tête redevenues fidèles à l'original, larmes refaites (naissance en perle, gouttes en éventail, écoulement par le menton).</p>
   </section>
   <section class="note">
     <h2>Pour l'intégrer dans l'app</h2>
     <p>Même mécanique que les réactions actuelles. L'attente est en <b>1254 × 1254</b> et boucle sur 120 images.
     Les réactions sont en <b>1672 × 1672</b> : l'attente y occupe la sous-fenêtre de 75 %, décalée de 12,5 % à gauche et 25 % en haut.</p>
-    <p>Chaque réaction <b>part de la pose de repos et y revient</b> : on peut la lancer à tout moment de la boucle, comme le montre le bouton « avec l'idle ».</p>
-    <p>Le fichier commun garde les segments dans ses marqueurs : <code>crie 0 → 80</code>, <code>pleure 82 → 186</code>, <code>explose 188 → 300</code>.</p>
+    <p>Chaque réaction <b>part de la pose de repos et y revient</b>. La bascule part du Taro normal et finit sur le Taro rouge au repos ; le retour au calme fait l'inverse.</p>
+    <p>Segments du fichier commun : <code>crie 0 → 80</code>, <code>pleure 82 → 186</code>, <code>explose 188 → 300</code>, <code>bascule 302 → 362</code>, <code>calme 364 → 420</code>.</p>
+  </section>
+  <section class="note">
+    <h2>Quelle réaction pour quelle phrase (proposition)</h2>
+    <table class="carte-r">
+      <tr><th>Réplique de Taro</th><th>Réaction</th></tr>
+      <tr><td>Neutre, il attend la réponse</td><td><b>aucune</b> (attente)</td></tr>
+      <tr><td>Reproche sec, première erreur</td><td><b>crie</b></td></tr>
+      <tr><td>Plaintive, découragée, erreurs en série</td><td><b>pleure</b></td></tr>
+      <tr><td>Outrée, erreur grave ou abandon</td><td><b>explose</b></td></tr>
+    </table>
+    <p>Règles : une seule réaction par phrase, pas deux fois la même d'affilée, et une phrase qui arrive pendant une réaction attend qu'elle finisse.
+    À caler sur les vraies répliques dès que j'ai accès au code de Talkana.</p>
   </section>
   <section class="note">
     <h2>Les fichiers Lottie</h2>
     <ul class="fichiers">
-      <li><code>taro_rouge_attente.json</code><span>1,2 Mo · boucle</span></li>
-      <li><code>taro_rouge_crie.json</code><span>1,3 Mo · 81 images</span></li>
-      <li><code>taro_rouge_pleure.json</code><span>1,4 Mo · 105 images</span></li>
-      <li><code>taro_rouge_explose.json</code><span>1,4 Mo · 113 images</span></li>
-      <li><code>taro_rouge_reactions.json</code><span>1,8 Mo · les trois</span></li>
+      <li><code>taro_rouge_attente.json</code><span>1,0 Mo · boucle</span></li>
+      <li><code>taro_rouge_crie.json</code><span>1,3 Mo · 2,7 s</span></li>
+      <li><code>taro_rouge_pleure.json</code><span>1,1 Mo · 3,5 s</span></li>
+      <li><code>taro_rouge_explose.json</code><span>1,5 Mo · 3,8 s</span></li>
+      <li><code>taro_rouge_bascule.json</code><span>1,4 Mo · 2,0 s</span></li>
+      <li><code>taro_rouge_calme.json</code><span>1,3 Mo · 1,9 s</span></li>
+      <li><code>taro_rouge_reactions.json</code><span>2,6 Mo · les cinq</span></li>
     </ul>
     <p style="margin-top:10px">Format bodymovin 5.7, images intégrées, compatible lottie-web et lottie-ios. Rouge, sourcils, bouches,
     larmes, vapeur et veine sont vectoriels : ils restent nets à toutes les tailles.</p>
@@ -151,11 +217,20 @@ h1 span{color:var(--brique)}
 <script src="donnees.js"></script>
 <script>
 (function(){
-  var IDLE = window.TR_IDLE, REAC = window.TR_REACTIONS;
+  var IDLE = window.TR_IDLE, NORMAL = window.TR_IDLE_NORMAL, REAC = window.TR_REACTIONS;
+  var PAR_NOM = {};
+  window.TR_CARTES.forEach(function(d){ PAR_NOM[d.nom] = d; });
+  var ORDRE = ['crie', 'pleure', 'explose', 'bascule', 'calme'];
+  // avant / apres : quel idle encadre la scene quand on la joue « avec l'idle »
+  var CADRE = {bascule:{avant:'normal', apres:'rouge'}, calme:{avant:'rouge', apres:'normal'}};
   var CARTES = [{nom:'attente', titre:'Il attend, furieux', ja:'むかっ', rom:'mukat — il rumine', de:0, a:119, duree:120,
-                 boucle:true, forte:0, idle:true}].concat(window.TR_CARTES);
+                 boucle:true, forte:0, idle:true}].concat(ORDRE.map(function(n){ return PAR_NOM[n]; }).filter(Boolean));
   var grille = document.getElementById('grille');
   var vivant = null;
+
+  function charge(boite, data, boucle, auto){
+    return lottie.loadAnimation({container: boite.firstElementChild, renderer:'svg', loop:boucle, autoplay:auto, animationData:data});
+  }
 
   function tuer(){
     if (!vivant) return;
@@ -176,16 +251,17 @@ h1 span{color:var(--brique)}
     carte.querySelector('.affiche').hidden = true;
     carte.classList.add('joue');
     if (d.idle) {
-      var a = lottie.loadAnimation({container: bIdle.firstElementChild, renderer:'svg', loop:true, autoplay:true, animationData:IDLE});
+      var a = charge(bIdle, IDLE, true, true);
       bIdle.hidden = false;
       a.addEventListener('enterFrame', function(){ jauge.style.width = (a.currentFrame / 119 * 100) + '%'; });
       vivant = {idle:a, reac:null, carte:carte};
       return;
     }
-    var reac = lottie.loadAnimation({container: bReac.firstElementChild, renderer:'svg', loop:false, autoplay:false, animationData:REAC});
+    var cadre = CADRE[d.nom] || {avant:'rouge', apres:'rouge'};
+    var reac = charge(bReac, REAC, false, false);
     var anIdle = null;
     if (avecIdle) {
-      anIdle = lottie.loadAnimation({container: bIdle.firstElementChild, renderer:'svg', loop:true, autoplay:true, animationData:IDLE});
+      anIdle = charge(bIdle, cadre.avant === 'normal' ? NORMAL : IDLE, true, true);
       anIdle.goToAndPlay(37, true);
     }
     vivant = {idle:anIdle, reac:reac, carte:carte};
@@ -199,6 +275,11 @@ h1 span{color:var(--brique)}
     });
     reac.addEventListener('complete', function(){
       if (avecIdle) {
+        if (cadre.apres !== cadre.avant) {
+          try { anIdle.destroy(); } catch(e){}
+          anIdle = charge(bIdle, cadre.apres === 'normal' ? NORMAL : IDLE, true, true);
+          vivant.idle = anIdle;
+        } else anIdle.goToAndPlay(0, true);
         bReac.hidden = true; bIdle.hidden = false;
         setTimeout(function(){ if (vivant && vivant.carte === carte) tuer(); }, 1500);
       } else tuer();
@@ -247,5 +328,100 @@ h1 span{color:var(--brique)}
     document.documentElement.style.setProperty('--carte-l', Math.round(pt * 1672 / 1254) + 'px');
     grille.classList.add('reel');
   });
+
+  // ---------------------------------------------------------------- parcours (proposition de branchement)
+  var FAMILLES = [
+    {nom:null, titre:'aucune réaction', aide:'neutre, il attend la réponse', phrases:[['…で？', '…de ? — « …Et alors ? »']]},
+    {nom:'crie', titre:'il crie', aide:'reproche sec', phrases:[['ちがう！！', 'chigau !! — « Faux ! »'], ['ちゃんと聞いて！', 'chanto kiite ! — « Écoute bien ! »']]},
+    {nom:'pleure', titre:'il pleure de rage', aide:'plaintive, découragée', phrases:[['なんでできないの…', 'nande dekinai no… — « Pourquoi tu n’y arrives pas… »'], ['もういやだ…', 'mô iya da… — « J’en ai marre… »']]},
+    {nom:'explose', titre:'il explose', aide:'outrée, erreur grave', phrases:[['いいかげんにして！', 'ii kagen ni shite ! — « Ça suffit ! »'], ['また間違えた！？', 'mata machigaeta !? — « Encore faux !? »']]}
+  ];
+  var pScene = document.getElementById('p-scene');
+  var pNormal = document.getElementById('p-normal'), pRouge = document.getElementById('p-rouge'), pReac = document.getElementById('p-reac');
+  var bHard = document.getElementById('p-hardcore'), bQuit = document.getElementById('p-quitter');
+  var pEtat = document.getElementById('p-etat'), pJournal = document.getElementById('p-journal');
+  var pFam = document.getElementById('p-familles');
+  var P = {etat:'normal', occupe:false, enCours:null, attend:null, derniere:null, suite:null, aN:null, aR:null, aX:null};
+
+  FAMILLES.forEach(function(f){
+    var g = document.createElement('div'); g.className = 'famille';
+    g.innerHTML = '<span class="etiq"><b>' + f.titre + '</b> · ' + f.aide + '</span><div class="phrases"></div>';
+    f.phrases.forEach(function(ph){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'phrase'; b.disabled = true;
+      b.innerHTML = '<span class="jp" lang="ja">' + ph[0] + '</span><span class="fr">' + ph[1] + '</span>';
+      b.addEventListener('click', function(){ phrase(f, ph[0], b); });
+      g.querySelector('.phrases').appendChild(b);
+    });
+    pFam.appendChild(g);
+  });
+
+  function montre(q){
+    pScene.querySelector('.affiche').hidden = true;
+    pNormal.hidden = q !== 'normal'; pRouge.hidden = q !== 'rouge'; pReac.hidden = q !== 'reac';
+  }
+  function maj(){
+    var hc = P.etat === 'hardcore';
+    bHard.disabled = P.etat !== 'normal' || P.occupe;
+    bQuit.disabled = !hc || P.occupe;
+    [].forEach.call(pFam.querySelectorAll('.phrase'), function(b){ b.disabled = !hc; });
+    pEtat.classList.toggle('rouge', P.etat !== 'normal' || P.occupe);
+    var txt = {bascule:'bascule…', calme:'retour au calme…', crie:'Taro hardcore · il crie', pleure:'Taro hardcore · il pleure',
+               explose:'Taro hardcore · il explose'};
+    pEtat.querySelector('span').textContent = P.occupe ? txt[P.enCours] : (P.etat === 'normal' ? 'Taro normal' : 'Taro hardcore · attente');
+  }
+  function demarre(){
+    if (P.aN) return;
+    P.aN = charge(pNormal, NORMAL, true, true);
+    P.aR = charge(pRouge, IDLE, true, false);
+    P.aX = charge(pReac, REAC, false, false);
+    P.aX.addEventListener('complete', function(){ var s = P.suite; P.suite = null; if (s) s(); });
+    montre('normal');
+  }
+  function joue(nom, puis){
+    var d = PAR_NOM[nom];
+    P.occupe = true; P.enCours = nom; maj();
+    P.suite = function(){
+      puis();
+      P.occupe = false;
+      if (P.attend && P.etat === 'hardcore') { var n = P.attend; P.attend = null; reagit(n); }
+      maj();
+    };
+    P.aX.playSegments([d.de, d.a], true);
+    montre('reac');
+  }
+  function versRouge(){ P.aR.goToAndPlay(0, true); montre('rouge'); }
+  function reagit(nom){
+    // jamais deux fois la meme reaction d'affilee
+    if (nom === P.derniere) nom = nom === 'explose' ? 'crie' : 'explose';
+    P.derniere = nom;
+    pJournal.textContent = '→ ' + nom;
+    joue(nom, versRouge);
+  }
+  function phrase(f, jp, b){
+    [].forEach.call(pFam.querySelectorAll('.phrase'), function(x){ x.classList.toggle('va', x === b); });
+    if (!f.nom) { pJournal.textContent = jp + ' → il reste en attente'; return; }
+    if (P.occupe) { P.attend = f.nom; pJournal.textContent = jp + ' → ' + f.nom + ' (après la réaction en cours)'; return; }
+    reagit(f.nom);
+    pJournal.textContent = jp + ' → ' + P.derniere;
+  }
+  bHard.addEventListener('click', function(){
+    demarre();
+    if (P.etat !== 'normal' || P.occupe) return;
+    pJournal.textContent = 'Taro hardcore → bascule';
+    P.aN.pause();
+    joue('bascule', function(){ P.etat = 'hardcore'; P.derniere = null; versRouge(); });
+  });
+  bQuit.addEventListener('click', function(){
+    if (P.etat !== 'hardcore' || P.occupe) return;
+    pJournal.textContent = 'fin du mode hardcore → retour au calme';
+    P.attend = null;
+    joue('calme', function(){ P.etat = 'normal'; P.aR.pause(); P.aN.goToAndPlay(0, true); montre('normal'); });
+  });
+  // l'idle normal se charge quand le parcours arrive a l'ecran
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(e){ if (e[0].isIntersecting) { demarre(); io.disconnect(); } });
+    io.observe(pScene);
+  } else demarre();
+  maj();
 })();
 </script>

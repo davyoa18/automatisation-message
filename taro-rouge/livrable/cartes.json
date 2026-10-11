@@ -31,5 +31,27 @@
   "ja": "ぷんぷん！",
   "rom": "punpun ! — il explose",
   "titre": "Il explose"
+ },
+ {
+  "nom": "bascule",
+  "de": 302,
+  "a": 362,
+  "duree": 61,
+  "boucle": false,
+  "forte": 24,
+  "ja": "カッ！",
+  "rom": "ka! — il voit rouge",
+  "titre": "La bascule"
+ },
+ {
+  "nom": "calme",
+  "de": 364,
+  "a": 420,
+  "duree": 57,
+  "boucle": false,
+  "forte": 26,
+  "ja": "ふぅ…",
+  "rom": "fû… — il redescend",
+  "titre": "Retour au calme"
  }
 ]

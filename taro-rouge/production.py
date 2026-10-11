@@ -103,7 +103,8 @@ def main():
     ajoute('tete_rage', rougit(C_sc, zero, 'rage'))
     # ---- masque des larmes : interieur de la tete, sans le contour encre (le menton passe devant)
     sil = C_sc[..., 3] > 0.5
-    inter = ndi.binary_erosion(sil, iterations=17)
+    # les larmes s'arretent au bord interieur du trait de contour (elles passent derriere le menton)
+    inter = ndi.distance_transform_edt(sil) > 19.5
     mq = np.zeros_like(C_sc)
     mq[..., :3] = 1.0
     mq[..., 3] = cv2.GaussianBlur(inter.astype(np.float32), (0, 0), 1.0)
@@ -117,6 +118,9 @@ def main():
     ajoute('cou', rougit(cou, zero, 'rouge', force=0.45))
     for nom in ('queue', 'torse', 'capuche'):
         ajoute(nom, charge_rig(nom))
+    # Taro normal (non rouge) : pour la bascule normal -> rouge et le retour au calme
+    for nom in ('tete', 'oreille_g', 'oreille_d', 'cou'):
+        ajoute(f'{nom}_normal', charge_rig(nom))
     # ---- yeux
     base_old = efface_traits(ORIG.copy())
     for etat in ETATS:

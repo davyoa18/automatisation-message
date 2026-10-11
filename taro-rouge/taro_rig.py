@@ -45,6 +45,7 @@ class Timeline:
         self.yeux = [(0, 'base')]
         self.dents = [(0, 0)]
         self.fx = []           # fonctions (t0, ind, ip, op, parents) -> liste de calques
+        self.remplissage = None  # (t_debut, t_fin, 'monte' | 'descend') : bascule normal <-> rouge
 
     def k(self, nom, t, v, e='doux'):
         self.ch[nom].append((t, v, e))
@@ -125,6 +126,33 @@ class Timeline:
         if ys[0] != (0, 'base') or ys[-1][1] != 'base':
             pb.append(f'{self.nom}: yeux ne commencent/finissent pas sur base')
         return pb
+
+
+Y_BAS, Y_HAUT = 832.0, -14.0   # sous le menton / au-dessus des oreilles (repere de la tete)
+
+
+def chemin_ligne(t, ta, tb, sens):
+    """Zone (fermee) AU-DESSUS d'une ligne ondulee a l'instant t. 'monte' : la ligne part du bas
+    (Taro normal partout) et monte (le rouge remplit la tete de bas en haut). 'descend' : l'inverse."""
+    from vecteur import lisse, Chemin
+    u = np.clip((t - ta) / max(tb - ta, 1e-6), 0, 1)
+    e = _bezier_y(u, 0.55, 0.0, 0.8, 1.0) if sens == 'monte' else _bezier_y(u, 0.3, 0.0, 0.6, 1.0)
+    if sens == 'monte':
+        y = Y_BAS + (Y_HAUT - Y_BAS) * e
+    else:
+        y = Y_HAUT + (Y_BAS - Y_HAUT) * e
+    # ondulation qui voyage (liquide qui monte), plus forte au milieu de la course
+    amp = 11.0 * np.sin(np.pi * u) + 2.0
+    xs = np.linspace(1500, -250, 23)
+    ph = t * 0.55
+    vague = [(x, y + amp * np.sin(x / 92.0 + ph) + 0.4 * amp * np.sin(x / 41.0 - ph * 1.7)) for x in xs]
+    w = lisse(vague, ferme=False, tension=1.0)
+    v = np.vstack([[[-250, -700], [1500, -700]], w.v])
+    i_ = np.vstack([[[0, 0], [0, 0]], w.i])
+    o_ = np.vstack([[[0, 0], [0, 0]], w.o])
+    i_[2] = 0
+    o_[-1] = 0
+    return Chemin(v, i_, o_, True)
 
 
 def _bezier_y(u, x1, y1, x2, y2):
@@ -296,9 +324,41 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
                 calque = m
             {'devant': devant, 'derriere': derriere, 'sous_bouche': sous_bouche}[place].append(calque)
 
+    # --- bascule normal <-> rouge : le Taro normal recouvre le Taro rouge au-dessus d'une ligne ondulee
+    #     (repere de la tete) qui monte (normal -> rouge) ou descend (rouge -> normal)
+    sur_visage, sur_oreille = [], {'g': [], 'd': []}
+    if tl.remplissage:
+        ta, tb, sens = tl.remplissage
+        fin_overlay = op if sens == 'descend' else t0 + tb + 1
+        def ligne_cle(t):
+            return chemin_ligne(t, ta, tb, sens)
+        keys = []
+        pas = 1
+        t = 0
+        while t <= tl.duree:
+            if (t < ta - 2 or t > tb + 2) and t not in (0, tl.duree):
+                t += pas
+                continue
+            keys.append((t, ligne_cle(t), 'lin'))
+            t += pas
+        def matte_ligne(nom_):
+            m = L.calque_forme(nm(nom_), I(), ip, fin_overlay, [L.groupe('zone', [
+                L.trace(chemin_prop(keys, None, t0)), L.rempli((1, 1, 1))])], parent=i_tete)
+            m['td'] = 1
+            return m
+        def normal(nom_, parent):
+            c = img(nom_, parent)
+            c['op'] = fin_overlay
+            c['tt'] = 1
+            return c
+        sur_visage = [matte_ligne('remplissage_tete'), normal('tete_normal', i_tete)]
+        for cote, i_o in (('g', i_og), ('d', i_od)):
+            sur_oreille[cote] = [matte_ligne(f'remplissage_oreille_{cote}'), normal(f'oreille_{cote}_normal', i_o)]
+
     pile = []
     pile += devant
     pile.append(img('torse', i_root))
+    pile += sur_visage
     pile += [contour, matte, interieur]
     pile += sous_bouche
     pile.append(sourcils)
@@ -307,10 +367,18 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
         pile.append(img('tete_rage', i_tete, o=rage_o))
     pile.append(img('tete_rouge', i_tete))
     for cote, i_o in (('g', i_og), ('d', i_od)):
+        pile += sur_oreille[cote]
         if rage_o is not None:
             pile.append(img(f'oreille_{cote}_rage', i_o, o=rage_o))
         pile.append(img(f'oreille_{cote}_rouge', i_o))
     pile.append(img('cou', i_root, pivot=PIV_COU, s=s_prop(C['cou.s'], t0)))
+    # joint d'encre pose sur le haut de la queue (meme transformation que la queue), cache par la tete au repos
+    from joint import polygone
+    from vecteur import Chemin
+    traces = [L.trace({'a': 0, 'k': Chemin(p_, ferme=True).lottie()}, nm=f'joint{k}') for k, p_ in enumerate(polygone())]
+    pile.append(L.calque_forme(nm('joint_queue'), I(), ip, op, [L.groupe('joint', traces + [L.rempli(TR.ENCRE)])],
+        L.ks(p={'a': 0, 'k': [PIV_QUEUE[0], PIV_QUEUE[1], 0]}, a={'a': 0, 'k': [PIV_QUEUE[0], PIV_QUEUE[1], 0]},
+             r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)), parent=i_root))
     pile.append(img('queue', i_root, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)))
     pile.append(img('capuche', i_root))
     pile += derriere
@@ -319,8 +387,9 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
 
 
 def fichier(nom, w, h, op, couches, marqueurs=None):
+    utilises = {c.get('refId') for c in couches if c.get('ty') == 2}
     d = {'v': '5.7.4', 'fr': 30, 'ip': 0, 'op': op, 'w': w, 'h': h, 'nm': nom, 'ddd': 0,
-         'assets': assets(), 'layers': couches}
+         'assets': [a for a in assets() if a['id'] in utilises], 'layers': couches}
     if marqueurs:
         d['markers'] = marqueurs
     return d

@@ -283,10 +283,10 @@ def texture_masque(img, oeil_plein, graine):
 
 def _texture_masque(img, oeil_plein, graine):
     """Remplit tout l'oeil avec la peinture du masque brun (sources : brun du masque seulement)."""
-    zone = ndi.binary_dilation(oeil_plein, iterations=3)
+    zone = ndi.binary_dilation(oeil_plein, iterations=6)
     h, s, l = rgb_vers_hsl(img[..., :3])
     brun = (l > 0.22) & (l < 0.48) & (h < 32) & (s > 0.2) & (img[..., 3] > 0.9)
-    anneau = ndi.binary_dilation(zone, iterations=40) & ~ndi.binary_dilation(zone, iterations=4)
+    anneau = ndi.binary_dilation(zone, iterations=40) & ~ndi.binary_dilation(zone, iterations=3)
     src = brun & anneau
     base = push_pull(img[..., :3], src.astype(np.float32))
     # detail : grain du masque copie depuis l'anneau (meme facon que la peinture d'origine)

@@ -54,11 +54,11 @@ def veine(pos, t_on, t_off, battements=(), parent='tete', echelle=1.0, rot=-12, 
         sk = [(t_on, 0, 'sortie'), (t_on + 4, 1.28 * e, 'doux'), (t_on + 8, 0.9 * e, 'doux'), (t_on + 11, 1.0 * e, 'doux')]
         t = t_on + 11
         for b in battements:
-            if b <= t + 2 or b >= t_off - 5:
+            if b <= t + 2 or b >= t_off - 12:
                 continue
             sk += [(b, 1.0 * e, 'sortie'), (b + 2, 1.2 * e, 'doux'), (b + 6, 1.0 * e, 'doux')]
             t = b + 6
-        sk += [(t_off - 5, 1.0 * e, 'doux'), (t_off - 2, 1.18 * e, 'entree'), (t_off, 0, 'lin')]
+        sk += [(t_off - 9, 1.0 * e, 'doux'), (t_off - 6, 1.16 * e, 'sortie'), (t_off, 0, 'doux')]
         lay = L.calque_forme('veine', I(), max(ip, t0 + t_on), min(op, t0 + t_off + 1), items,
                              _ks_simple([(0, pos, 'lin')], t0, s_keys=sk, r_keys=[(t_on, rot - 8, 'sortie'), (t_on + 8, rot, 'doux')]),
                              parent=P[parent])
@@ -120,7 +120,7 @@ def traits_cri(centre, salves, n=7, r1=330.0, r2=420.0, a0=-168, a1=-12, parent=
                                         L.trait(ENCRE, larg)])]
             t_deb = int(salves[0][0])
             t_fin = int(salves[-1][0] + salves[-1][1] + 4)
-            out.append(('devant', L.calque_forme(f'cri{k}', I(), max(ip, t0 + t_deb), min(op, t0 + t_fin), items,
+            out.append(('derriere', L.calque_forme(f'cri{k}', I(), max(ip, t0 + t_deb), min(op, t0 + t_fin), items,
                                                  parent=P[parent])))
         return out
     return f
@@ -139,46 +139,64 @@ def _ruban(points, larg, ferme_bas=True):
     return lisse(np.vstack([g, d[::-1]]), ferme=True, tension=0.85)
 
 
-def _flot(depart, direction, longueur, phase, n=9, larg0=30.0, larg1=58.0, ondul=10.0):
-    """Points d'un flot de larmes ondulant ; 'longueur' 0..1 de la longueur max."""
+def _flot(depart, direction, longueur, phase, n=9, larg0=30.0, larg1=58.0, ondul=10.0, plein=250.0):
+    """Points et largeurs d'un ruisseau de larmes ; 'longueur' 0..1 de la longueur max.
+    L'ondulation a un nombre d'onde absolu (une perle courte reste droite, sans pli) et le haut
+    reste accroche au coin de l'oeil."""
     d0 = np.asarray(depart, float)
     u = np.asarray(direction, float)
     u /= np.linalg.norm(u)
     v = np.array([-u[1], u[0]])
     ts = np.linspace(0, 1, n)
-    Lmax = 250.0 * longueur + 8
-    pts = d0 + u[None] * (ts[:, None] * Lmax) + v[None] * (np.sin(ts * 6.5 + phase) * ondul * (0.3 + ts))[:, None]
+    Lmax = plein * longueur + 8
+    s = ts * Lmax
+    k = 6.5 / (plein + 8)
+    amp = ondul * (0.3 + ts) * min(1.0, longueur * 1.4)
+    pts = d0 + u[None] * s[:, None] + v[None] * ((np.sin(s * k + phase) - np.sin(phase)) * amp)[:, None]
     larg = larg0 + (larg1 - larg0) * ts ** 0.8
     larg *= 1.0 + 0.10 * np.sin(ts * 9.0 + phase * 1.3)
+    larg *= 0.6 + 0.4 * min(1.0, longueur * 2.0)
     larg[-1] *= 0.85
     return pts, larg
 
 
-def flots_larmes(coins, t_on, t_off, parent='tete', dir_g=(-0.18, 1.0), dir_d=(0.22, 1.0)):
-    """Deux ruisseaux de larmes depuis les coins exterieurs des yeux, dans un seul calque
-    (masque par la silhouette de la tete : les larmes coulent sur les joues et s'arretent au menton)."""
+def flots_larmes(coins, t_on, t_fin, t_off, parent='tete', dir_g=(-0.18, 1.0), dir_d=(0.22, 1.0)):
+    """Deux ruisseaux de larmes depuis les coins exterieurs des yeux, dans un seul calque masque par
+    l'interieur de la tete (ils passent derriere le contour du menton).
+    Naissance : une perle qui gonfle au coin de l'oeil puis s'allonge. Fin (t_fin -> t_off) : le
+    ruisseau s'ecoule par le menton (il se tasse vers son bout bas) avant que les yeux se rouvrent."""
     def f(t0, I, ip, op, P):
         groupes = []
         for k, (coin, dirn) in enumerate(zip(coins, (dir_g, dir_d))):
+            u = np.asarray(dirn, float)
+            u /= np.linalg.norm(u)
+            bas = np.asarray(coin, float) + u * (250.0 + 8)
             keys, reflet = [], []
-            etapes = [(t_on, 0.0, 0.0), (t_on + 6, 0.55, 0.6), (t_on + 12, 1.0, 1.4)]
-            t = t_on + 12
-            ph = 1.4
-            while t + 5 < t_off - 10:
+            etapes = [(t_on, 0.12, 0.0), (t_on + 6, 0.55, 0.6), (t_on + 12, 1.0, 1.4)]
+            t, ph = t_on + 12, 1.4
+            while t + 5 <= t_off:
                 t += 5
                 ph += 1.15
                 etapes.append((t, 1.0 if (len(etapes) % 2) else 0.94, ph))
-            etapes += [(t_off - 8, 0.7, ph + 1.0), (t_off, 0.0, ph + 1.6)]
             for (t, lg, ph) in etapes:
                 pts, larg = _flot(coin, dirn, lg, ph + k * 0.9)
                 keys.append((t, _ruban(pts, larg), 'doux'))
-                q = pts + np.array([-9.0, 0.0]) * (1 if k == 0 else -1)
+                cote = -1 if k == 0 else 1
+                q = pts + np.array([9.0 * cote, 0.0]) * (0.6 + 0.4 * min(1.0, lg * 2))
                 reflet.append((t, lisse(q[1:6], ferme=False), 'doux'))
-            groupes.append(L.groupe(f'reflet{k}', [L.trace(L.prop_chemin([(t + t0, c, e) for (t, c, e) in reflet])),
-                                                   L.trait(EAU_CLAIRE, 8)]))
-            groupes.append(L.groupe(f'eau{k}', [L.trace(L.prop_chemin([(t + t0, c, e) for (t, c, e) in keys])),
-                                                L.rempli(EAU), L.trait(ENCRE, 8)]))
-        ip2, op2 = max(ip, t0 + t_on), min(op, t0 + t_off + 1)
+            eau = [L.groupe(f'reflet{k}', [L.trace(L.prop_chemin([(t + t0, c, e) for (t, c, e) in reflet])),
+                                           L.trait(EAU_CLAIRE, 8)]),
+                   L.groupe(f'eau{k}', [L.trace(L.prop_chemin([(t + t0, c, e) for (t, c, e) in keys])),
+                                        L.rempli(EAU), L.trait(ENCRE, 8)])]
+            # naissance : la perle gonfle depuis le coin de l'oeil
+            nait = L.tr(p=list(coin), a=list(coin),
+                        s=L.prop([(t_on + t0, [0, 0], 'sortie'), (t_on + 4 + t0, [108, 108], 'doux'),
+                                  (t_on + 7 + t0, [100, 100], 'doux')]))
+            # fin : le ruisseau se tasse vers le menton et s'en va
+            part = L.tr(p=list(bas), a=list(bas),
+                        s=L.prop([(t_fin + t0, [100, 100], 'entree'), (t_off + t0, [45, 0], 'lin')]))
+            groupes.append(L.groupe(f'flot{k}', [L.groupe(f'perle{k}', eau, nait)], part))
+        ip2, op2 = max(ip, t0 + t_on), min(op, t0 + t_off)
         larmes = L.calque_forme('larmes', I(), ip2, op2, groupes, parent=P[parent])
         larmes['tt'] = 1
         return [('sous_bouche', ('masque_tete', ip2, op2)), ('sous_bouche', larmes)]
@@ -193,13 +211,14 @@ def _goutte(r=17.0):
     return Chemin(v, i=i, o=o, ferme=True)
 
 
-def goutte(depart, vitesse, t_on, duree, parent='scene', r=17.0, gravite=1.6, place='devant'):
-    """Goutte projetee : trajectoire balistique, orientee dans le sens du mouvement."""
+def goutte(depart, vitesse, t_on, duree, parent='scene', r=17.0, gravite=2.2, place='devant'):
+    """Goutte projetee : trajectoire balistique, orientee dans le sens du mouvement. Elle nait deja
+    detachee (a mi-taille) et disparait en retrecissant, jamais en fondu (pas de goutte fantome)."""
     def f(t0, I, ip, op, P):
         d = np.asarray(depart, float)
         v = np.asarray(vitesse, float)
         pk, rk = [], []
-        n = 5
+        n = 6
         for j in range(n + 1):
             t = duree * j / n
             pos = d + v * t + np.array([0, 0.5 * gravite * t * t])
@@ -207,62 +226,84 @@ def goutte(depart, vitesse, t_on, duree, parent='scene', r=17.0, gravite=1.6, pl
             ang = np.degrees(np.arctan2(vel[1], vel[0])) + 90 + 180   # pointe a l'arriere
             pk.append((t_on + t, pos, 'lin'))
             rk.append((t_on + t, ang, 'lin'))
-        sk = [(t_on, 0.2, 'sortie'), (t_on + 3, 1.0, 'doux'), (t_on + duree * 0.8, 0.9, 'doux'), (t_on + duree, 0.6, 'lin')]
-        ok = [(t_on, 100, 'lin'), (t_on + duree - 4, 100, 'lin'), (t_on + duree, 0, 'lin')]
+        sk = [(t_on, 0.55, 'sortie'), (t_on + 3, 1.0, 'doux'), (t_on + duree * 0.6, 1.0, 'entree'),
+              (t_on + duree, 0.0, 'lin')]
         ch = _goutte(r)
         items = [L.groupe('reflet', [_ellipse(-0.35 * r, -0.05 * r, 0.22 * r), L.rempli(BLANC)]),
-                 L.groupe('goutte', [L.trace({'a': 0, 'k': ch.lottie()}), L.rempli(EAU), L.trait(ENCRE, 6)])]
-        lay = L.calque_forme('goutte', I(), max(ip, int(t0 + t_on)), min(op, int(t0 + t_on + duree) + 1), items,
-                             _ks_simple(pk, t0, s_keys=sk, r_keys=rk, o_keys=ok), parent=P[parent])
+                 L.groupe('goutte', [L.trace({'a': 0, 'k': ch.lottie()}), L.rempli(EAU), L.trait(ENCRE, 7)])]
+        lay = L.calque_forme('goutte', I(), max(ip, int(t0 + t_on)), min(op, int(np.ceil(t0 + t_on + duree))), items,
+                             _ks_simple(pk, t0, s_keys=sk, r_keys=rk), parent=P[parent])
         return [(place, lay)]
     return f
 
 
 # ------------------------------------------------------------------ choc au sol (trepignement)
-def choc(t_on, pieds=((452.0, 1192.0), (842.0, 1192.0)), parent='scene', duree=9):
-    """Petits traits d'impact qui fusent des pieds a l'atterrissage."""
+def choc(t_on, parent='root', duree=8):
+    """Traits d'impact a l'atterrissage : ils fusent des bords exterieurs des chaussures, au ras du sol,
+    vers l'exterieur et vers le haut (jamais vers le bas : ils resteraient coupes par le cadre)."""
+    pieds = (((388.0, 1176.0), -1), ((999.0, 1172.0), 1))
+
     def f(t0, I, ip, op, P):
-        out = []
-        for k, (x, y) in enumerate(pieds):
-            sgn = -1 if k == 0 else 1
-            items = []
-            for j, (ang, l0, l1) in enumerate(((-12, 40, 105), (-40, 36, 92), (-68, 30, 70))):
-                t = np.radians(180 + ang if sgn < 0 else -ang)
-                u = np.array([np.cos(t), np.sin(t)])
-                A = np.array([x, y]) + u * l0 + np.array([sgn * 30, 0])
-                B = np.array([x, y]) + u * l1 + np.array([sgn * 30, 0])
+        items = []
+        for (x, y), sgn in pieds:
+            for j, (ang, l0, l1) in enumerate(((4, 18, 92), (28, 22, 84), (52, 26, 70))):
+                t = np.radians(ang)
+                u = np.array([sgn * np.cos(t), -np.sin(t)])
+                A = np.array([x, y]) + u * l0
+                B = np.array([x, y]) + u * l1
                 ch = Chemin([A, B], ferme=False)
-                ek = [(t_on, 0, 'sortie'), (t_on + duree * 0.45, 100, 'lin'), (t_on + duree, 100, 'lin')]
-                sk = [(t_on, 0, 'lin'), (t_on + duree * 0.4, 0, 'entree'), (t_on + duree, 100, 'lin')]
-                items.append(L.groupe(f'l{j}', [L.trace({'a': 0, 'k': ch.lottie()}),
-                                                L.coupe(s=L.prop([(t + t0, v, e) for (t, v, e) in sk]),
-                                                        e=L.prop([(t + t0, v, e) for (t, v, e) in ek])),
-                                                L.trait(ENCRE, 11)]))
-            out.append(('devant', L.calque_forme('choc', I(), max(ip, int(t0 + t_on)), min(op, int(t0 + t_on + duree) + 1),
-                                                 items, parent=P[parent])))
-        return out
+                ek = [(t_on, 0, 'sortie'), (t_on + duree * 0.4, 100, 'lin'), (t_on + duree, 100, 'lin')]
+                sk = [(t_on, 0, 'lin'), (t_on + duree * 0.35, 0, 'entree'), (t_on + duree, 100, 'lin')]
+                items.append(L.groupe(f'l{sgn}{j}', [L.trace({'a': 0, 'k': ch.lottie()}),
+                                                    L.coupe(s=L.prop([(t + t0, v, e) for (t, v, e) in sk]),
+                                                            e=L.prop([(t + t0, v, e) for (t, v, e) in ek])),
+                                                    L.trait(ENCRE, 11)]))
+        lay = L.calque_forme('choc', I(), max(ip, int(t0 + t_on)), min(op, int(t0 + t_on + duree) + 1), items,
+                             parent=P[parent])
+        return [('devant', lay)]
     return f
 
 
-def jet_vapeur(depart, direction, t_on, n=4, ecart=2, duree=20, r=40.0, portee=190.0, parent='scene',
-               place='derriere', graine=0):
-    """Jet de vapeur continu : n bouffees lachees toutes les 'ecart' images, en eventail serre."""
+def jet_vapeur(depart, direction, t_on, n=4, ecart=2, duree=20, r=40.0, portee=190.0, parent='tete',
+               place='devant', graine=0):
+    """Jet de vapeur : n bouffees lachees toutes les 'ecart' images, dans UN seul calque. Tous les blancs
+    sont dessines au-dessus de tous les contours : la vapeur forme une seule masse avec un seul contour
+    exterieur (pas de nuages emboites). Par defaut attache a la tete, pour qu'il ne se decroche pas."""
     rng = np.random.default_rng(graine)
     u = np.asarray(direction, float)
     u /= np.linalg.norm(u)
     v = np.array([-u[1], u[0]])
-    fs = []
-    for k in range(n):
-        dev = rng.uniform(-0.18, 0.18)
-        d = (u + v * dev)
-        d /= np.linalg.norm(d)
-        fin = np.asarray(depart, float) + d * portee * rng.uniform(0.85, 1.1)
-        fs.append(bouffee(depart, fin, t_on + k * ecart, duree, r=r * rng.uniform(0.85, 1.12), parent=parent,
-                          place=place, taille_max=rng.uniform(1.35, 1.6), rot=rng.uniform(-25, 25)))
+    d0 = np.asarray(depart, float)
+    cercles = [(0, 0, 1.0), (-0.86, 0.30, 0.72), (0.80, 0.34, 0.66), (0.1, -0.55, 0.62)]
 
     def f(t0, I, ip, op, P):
-        out = []
-        for g in fs:
-            out += g(t0, I, ip, op, P)
-        return out
+        blancs, encres = [], []
+        t_fin = t_on + (n - 1) * ecart + duree
+        for k in range(n):
+            ta = t_on + k * ecart
+            dev = rng.uniform(-0.18, 0.18)
+            d = u + v * dev
+            d /= np.linalg.norm(d)
+            fin = d0 + d * portee * rng.uniform(0.85, 1.1)
+            mi = d0 + (fin - d0) * 0.62
+            rk = r * rng.uniform(0.85, 1.12)
+            tmax = rng.uniform(1.3, 1.55)
+            rot0 = rng.uniform(-25, 25)
+            pk = [(ta, d0, 'sortie'), (ta + duree * 0.45, mi, 'doux'), (ta + duree, fin, 'lin')]
+            sk = [(ta, 0.45, 'sortie'), (ta + duree * 0.35, tmax * 0.85, 'doux'), (ta + duree * 0.7, tmax, 'entree'),
+                  (ta + duree, 0.0, 'lin')]
+            if ta > t_on:
+                pk.insert(0, (t_on, d0, 'hold'))
+                sk.insert(0, (t_on, 0.0, 'hold'))
+            P_ = L.prop([(t + t0, [p_[0], p_[1]], e) for (t, p_, e) in pk])
+            S_ = L.prop([(t + t0, [100 * s_, 100 * s_], e) for (t, s_, e) in sk])
+            R_ = L.prop([(ta + t0, rot0 - 10, 'doux'), (ta + duree + t0, rot0 + 10, 'lin')])
+            tr_ = L.tr(p=P_, s=S_, r=R_)
+            blancs.append(L.groupe(f'blanc{k}', [_ellipse(x * rk, y * rk, rr * rk) for (x, y, rr) in cercles]
+                                   + [L.rempli(VAPEUR)], tr_))
+            encres.append(L.groupe(f'encre{k}', [_ellipse(x * rk, y * rk, rr * rk + 7) for (x, y, rr) in cercles]
+                                   + [L.rempli(ENCRE)], tr_))
+        lay = L.calque_forme('vapeur', I(), max(ip, int(t0 + t_on)), min(op, int(t0 + t_fin) + 1), blancs + encres,
+                             parent=P[parent])
+        return [(place, lay)]
     return f

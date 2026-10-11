@@ -8,11 +8,13 @@ SORTIE = os.environ.get('SORTIE', 'livrable')
 os.makedirs(f'{ICI}/{SORTIE}', exist_ok=True)
 
 CARTES = {
+    'bascule': {'ja': 'カッ！', 'rom': 'ka! — il voit rouge', 'titre': 'La bascule'},
+    'calme':   {'ja': 'ふぅ…', 'rom': 'fû… — il redescend', 'titre': 'Retour au calme'},
     'crie':    {'ja': 'もう！！', 'rom': 'mô !! — il crie', 'titre': 'Il crie'},
     'pleure':  {'ja': 'うわーん', 'rom': 'uwân — il pleure de rage', 'titre': 'Il pleure de rage'},
     'explose': {'ja': 'ぷんぷん！', 'rom': 'punpun ! — il explose', 'titre': 'Il explose'},
 }
-FORTE = {'crie': 30, 'pleure': 47, 'explose': 31}
+FORTE = {'crie': 30, 'pleure': 47, 'explose': 31, 'bascule': 24, 'calme': 26}
 DECAL = (209, 418)   # cadre elargi 1672 : meme calcul que dans l'app
 
 
@@ -44,7 +46,7 @@ def main():
               separators=(',', ':'))
     # --- reactions (cadre 1672), un fichier commun a segments + un fichier par reaction
     t0, ind, couches, cartes, marqueurs = 0, 0, [], [], []
-    for nom in ('crie', 'pleure', 'explose'):
+    for nom in ('crie', 'pleure', 'explose', 'bascule', 'calme'):
         tl = anims.TOUTES[nom]()
         tout_ok &= not verifie(tl)
         c, ind = construit(tl, t0, ind, DECAL)

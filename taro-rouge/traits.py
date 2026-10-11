@@ -82,9 +82,9 @@ BOUCHES = {
     # dents serrees (grr) : bouche large, peu ouverte
     'grr':     _bouche((-54, 10), (-12, -14, -12), (54, 10), (16, 20, 16)),
     # cri : grande ouverture
-    'cri':     _bouche((-72, 4), (-40, -48, -40), (72, 4), (58, 94, 58)),
+    'cri':     _bouche((-74, 4), (-36, -36, -36), (74, 4), (56, 80, 56)),
     # hurlement maximal (rage)
-    'hurle':   _bouche((-84, 6), (-52, -62, -52), (84, 6), (74, 116, 74)),
+    'hurle':   _bouche((-86, 6), (-42, -40, -42), (86, 6), (68, 94, 68)),
     # sanglot : bouche ouverte, coins tombants
     'sanglot': _bouche((-50, 26), (-20, -8, -20), (50, 26), (38, 60, 38)),
     # petite ouverture (inspiration, renifle)
@@ -130,7 +130,7 @@ def dents_bas(etat):
 LANGUES = {
     # langue : ellipse aplatie posee au fond de la bouche (8 sommets)
     'moue': (0, 0, 0, 0), 'grr': (0, 14, 0, 0), 'o': (0, 18, 4, 2),
-    'cri': (0, 74, 40, 18), 'hurle': (0, 98, 50, 22), 'sanglot': (0, 46, 30, 12),
+    'cri': (0, 62, 40, 16), 'hurle': (0, 76, 48, 18), 'sanglot': (0, 46, 30, 12),
 }
 
 

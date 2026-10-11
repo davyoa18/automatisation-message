@@ -10,6 +10,7 @@ import tete as T0
 from tete import (ORIG, efface_traits, paupiere2, texture_masque, masque_trait, profil, bezier,
                   OEIL_G_PLEIN, OEIL_D_PLEIN, ENCRE)
 from atelier import sauve, rgb_vers_hsl, hsl_vers_rgb, masque_ellipse, OEIL_G, OEIL_D
+from tete import ORIG as _ORIG_
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 INFO = json.load(open(f'{ICI}/rig/pieces.json'))
@@ -37,7 +38,7 @@ def vers_scene(img_old):
 def plein_oeil(img, oeil_plein, graine):
     """Recouvre tout l'oeil de texture du masque (paupiere entierement fermee)."""
     tex = texture_masque(img, oeil_plein, graine)
-    z = cv2.GaussianBlur(ndi.binary_dilation(oeil_plein, iterations=2).astype(np.float32), (0, 0), 0.8)
+    z = cv2.GaussianBlur(ndi.binary_dilation(oeil_plein, iterations=5).astype(np.float32), (0, 0), 0.8)
     out = img.copy()
     out[..., :3] = img[..., :3] * (1 - z[..., None]) + tex[..., :3] * z[..., None]
     return out, z
@@ -90,8 +91,13 @@ def yeux(etat, img):
     elif etat == 'fous':
         # yeux de rage : iris remplace par du blanc, toute petite pupille, paupieres en colere
         cg, cd = PAUP['base']
-        for oeil, (cx, cy), r in ((OEIL_G, (452, 520), 17), (OEIL_D, (760, 452), 15)):
-            m = masque_ellipse(img.shape, oeil, marge=-9)
+        for oeil, plein, (cx, cy), r in ((OEIL_G, OEIL_G_PLEIN, (452, 520), 17), (OEIL_D, OEIL_D_PLEIN, (760, 452), 15)):
+            # tout l'interieur du contour de l'oeil devient blanc (iris, croissant et trait du bas compris)
+            # (le bas de l'oeil d'origine n'a pas de contour : le blanc touche la fourrure ; le haut est
+            #  recouvert juste apres par la paupiere en colere et son trait)
+            d_in = ndi.distance_transform_edt(plein)
+            m = np.clip(d_in - 1.5, 0, 1).astype(np.float32)
+            m = cv2.GaussianBlur(m, (0, 0), 0.6)
             blanc = np.array([0.985, 0.975, 0.97], np.float32)
             img[..., :3] = img[..., :3] * (1 - m[..., None]) + blanc * m[..., None]
             yy, xx = np.mgrid[0:img.shape[0], 0:img.shape[1]]

@@ -1,0 +1,35 @@
+[
+ {
+  "nom": "crie",
+  "de": 0,
+  "a": 80,
+  "duree": 81,
+  "boucle": false,
+  "forte": 30,
+  "ja": "もう！！",
+  "rom": "mô !! — il crie",
+  "titre": "Il crie"
+ },
+ {
+  "nom": "pleure",
+  "de": 82,
+  "a": 186,
+  "duree": 105,
+  "boucle": false,
+  "forte": 47,
+  "ja": "うわーん",
+  "rom": "uwân — il pleure de rage",
+  "titre": "Il pleure de rage"
+ },
+ {
+  "nom": "explose",
+  "de": 188,
+  "a": 300,
+  "duree": 113,
+  "boucle": false,
+  "forte": 31,
+  "ja": "ぷんぷん！",
+  "rom": "punpun ! — il explose",
+  "titre": "Il explose"
+ }
+]

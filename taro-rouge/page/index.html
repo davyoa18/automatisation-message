@@ -1,0 +1,251 @@
+<title>Taro rouge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Cahier de reactions : bandeau, barre de reglages, grille de scenes jouables, puis notes de controle. */
+:root{
+  --fond:#F8F3F1; --carte:#FFFFFF; --encre:#2A1611; --doux:#7E6259; --trait:#E8DBD5;
+  --brique:#B81D00; --scene:#FFFAF5; --peche:#FFB657; --ombre:rgba(60,24,16,.08);
+  --f-jp:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-ui:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --f-mo:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --pas:clamp(14px,2.2vw,22px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --fond:#190C09; --carte:#22120E; --encre:#F6EEEA; --doux:#B39389; --trait:#3A2019;
+    --brique:#FF6E4A; --scene:#FFFAF5; --peche:#FFB657; --ombre:rgba(0,0,0,.45); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fond:#190C09; --carte:#22120E; --encre:#F6EEEA; --doux:#B39389; --trait:#3A2019;
+  --brique:#FF6E4A; --scene:#FFFAF5; --peche:#FFB657; --ombre:rgba(0,0,0,.45); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--fond);color:var(--encre);font:400 16px/1.55 var(--f-ui);-webkit-font-smoothing:antialiased}
+.enrobe{max-width:1180px;margin:0 auto;padding-inline:var(--pas);padding-block:0 72px}
+
+header{padding-block:clamp(30px,5vw,56px) 20px;display:grid;gap:14px}
+.marque{font:500 11px/1 var(--f-mo);letter-spacing:.16em;text-transform:uppercase;color:var(--brique);margin:0}
+h1{font:900 clamp(36px,6.4vw,58px)/1.02 var(--f-jp);letter-spacing:-.025em;margin:0;text-wrap:balance}
+h1 span{color:var(--brique)}
+.chapeau{max-width:62ch;margin:0;color:var(--doux);font-size:clamp(15px,1.7vw,17px)}
+.chapeau b{color:var(--encre);font-weight:600}
+
+.barre{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding-block:14px 18px;
+  border-bottom:1px solid var(--trait);margin-bottom:22px}
+.groupe{display:flex;gap:2px;background:var(--trait);border-radius:9px;padding:2px}
+.groupe button{font:500 13px/1 var(--f-ui);color:var(--doux);background:transparent;border:0;
+  padding:8px 13px;border-radius:7px;cursor:pointer}
+.groupe button[aria-pressed="true"]{background:var(--carte);color:var(--encre);box-shadow:0 1px 2px var(--ombre)}
+.etiq{font:500 11px/1 var(--f-mo);letter-spacing:.11em;text-transform:uppercase;color:var(--doux)}
+.droite{margin-left:auto}
+
+.grille{display:grid;gap:var(--pas);grid-template-columns:repeat(auto-fill,minmax(var(--carte-l,250px),1fr))}
+.grille.reel{grid-template-columns:repeat(auto-fill,var(--carte-l))}
+.carte{background:var(--carte);border:1px solid var(--trait);border-radius:14px;overflow:hidden;
+  display:flex;flex-direction:column;min-width:0}
+.carte.joue{border-color:var(--brique)}
+.scene{position:relative;background:var(--scene);aspect-ratio:1;max-width:100%;overflow:hidden;cursor:pointer;
+  display:block;width:100%;border:0;padding:0}
+.scene img{width:100%;height:100%;display:block;object-fit:cover}
+.boite{position:absolute;inset:0}
+/* la scene montre le cadre 1672 ; l'attente occupe sa sous-fenetre 1254 (75 %, decalee de 12,5 % et 25 %) */
+.cadre1254{position:absolute;width:75%;height:75%;left:12.5%;top:25%}
+.reac{position:absolute;inset:0}
+.jauge{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--brique)}
+.loupe{position:absolute;right:9px;bottom:9px;font:500 10px/1 var(--f-mo);letter-spacing:.08em;color:#7E6259;
+  background:rgba(255,250,245,.86);padding:5px 7px;border-radius:5px;text-transform:uppercase}
+.scene:focus-visible,.actions button:focus-visible,.groupe button:focus-visible{outline:2px solid var(--brique);outline-offset:2px}
+
+.pied{padding:13px 14px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
+.nom{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.nom b{font:900 18px/1.2 var(--f-jp);letter-spacing:-.01em}
+.ja{font:700 14px/1 var(--f-jp);color:var(--brique);white-space:nowrap}
+.rom{font-size:13px;color:var(--doux);margin:-5px 0 0}
+.faits{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto}
+.fait{font:400 11px/1 var(--f-mo);color:var(--doux);border:1px solid var(--trait);border-radius:5px;
+  padding:4px 6px;font-variant-numeric:tabular-nums}
+.fait.boucle{color:var(--brique);border-color:color-mix(in srgb,var(--brique) 45%,var(--trait))}
+.actions{display:flex;gap:6px}
+.actions button{flex:1;font:500 13px/1 var(--f-ui);border:1px solid var(--trait);background:transparent;
+  color:var(--encre);padding:10px 6px;border-radius:8px;cursor:pointer}
+.actions button:hover{border-color:var(--brique);color:var(--brique)}
+
+.notes{margin-top:34px;display:grid;gap:var(--pas);grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.note{padding:18px 20px;border:1px solid var(--trait);border-radius:12px;background:var(--carte);min-width:0}
+.note h2{font:900 17px/1.3 var(--f-jp);margin:0 0 10px;letter-spacing:-.01em}
+.note p{margin:0 0 9px;font-size:14.5px;color:var(--doux)}
+.note p:last-child{margin-bottom:0}
+.note b{color:var(--encre);font-weight:600}
+.note code{font:400 12.5px/1.4 var(--f-mo);color:var(--encre);background:var(--fond);padding:1px 5px;border-radius:4px;
+  overflow-wrap:anywhere}
+.chiffres{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:4px 0 10px;font-size:14px}
+.chiffres dt{font:500 13px/1.4 var(--f-mo);color:var(--brique);font-variant-numeric:tabular-nums;text-align:right}
+.chiffres dd{margin:0;color:var(--doux)}
+.fichiers{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.fichiers li{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--doux);
+  border-bottom:1px dashed var(--trait);padding-bottom:6px;min-width:0}
+.fichiers code{background:transparent;padding:0}
+.fichiers span{font:400 12px/1.4 var(--f-mo);white-space:nowrap;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="enrobe">
+<header>
+  <p class="marque">Talkana · Taro, version hardcore</p>
+  <h1>Taro <span>rouge</span></h1>
+  <p class="chapeau">Le même Taro, même sweat, même queue, mais <b>le visage rouge et les sourcils froncés en permanence</b>.
+  Quatre animations : il attend en ruminant, il crie, il pleure de rage, il explose. Touche une scène pour la jouer.</p>
+</header>
+
+<div class="barre">
+  <span class="etiq">Taille à l'écran</span>
+  <div class="groupe" id="tailles">
+    <button type="button" id="t0" data-t="0" aria-pressed="true">ajustée</button>
+    <button type="button" id="t300" data-t="300" aria-pressed="false">au centre · 300 pt</button>
+    <button type="button" id="t116" data-t="116" aria-pressed="false">en en-tête · 116 pt</button>
+  </div>
+  <span class="etiq droite">4 animations · 30 i/s</span>
+</div>
+
+<div class="grille" id="grille"></div>
+
+<div class="notes">
+  <section class="note">
+    <h2>Ce qui a été vérifié, image par image</h2>
+    <dl class="chiffres">
+      <dt>416</dt><dd>images rendues et contrôlées une à une (les quatre animations en entier)</dd>
+      <dt>0</dt><dd>bord découpé visible sur Taro : chaque bord du dessin est un trait d'encre</dd>
+      <dt>0</dt><dd>trou dans le corps, même tête levée, agrandie de 30 % ou tournée de 12°</dd>
+      <dt>0,05 %</dt><dd>de pixels qui bougent au raccord de la boucle d'attente (image 119 → 0)</dd>
+    </dl>
+    <p>Les pièces d'origine étaient coupées là où l'idle les cachait : brin de queue collé à la tête, mâchoire tranchée,
+    queue ouverte derrière le corps, oreilles soudées. Elles ont été <b>reconstruites entières</b> avant toute animation :
+    oreilles séparées et fermées, menton et cou dessinés, queue prolongée, dos de capuche ajouté sous la tête.</p>
+  </section>
+  <section class="note">
+    <h2>Pour l'intégrer dans l'app</h2>
+    <p>Même mécanique que les réactions actuelles. L'attente est en <b>1254 × 1254</b> et boucle sur 120 images.
+    Les réactions sont en <b>1672 × 1672</b> : l'attente y occupe la sous-fenêtre de 75 %, décalée de 12,5 % à gauche et 25 % en haut.</p>
+    <p>Chaque réaction <b>part de la pose de repos et y revient</b> : on peut la lancer à tout moment de la boucle, comme le montre le bouton « avec l'idle ».</p>
+    <p>Le fichier commun garde les segments dans ses marqueurs : <code>crie 0 → 80</code>, <code>pleure 82 → 186</code>, <code>explose 188 → 300</code>.</p>
+  </section>
+  <section class="note">
+    <h2>Les fichiers Lottie</h2>
+    <ul class="fichiers">
+      <li><code>taro_rouge_attente.json</code><span>1,2 Mo · boucle</span></li>
+      <li><code>taro_rouge_crie.json</code><span>1,3 Mo · 81 images</span></li>
+      <li><code>taro_rouge_pleure.json</code><span>1,4 Mo · 105 images</span></li>
+      <li><code>taro_rouge_explose.json</code><span>1,4 Mo · 113 images</span></li>
+      <li><code>taro_rouge_reactions.json</code><span>1,8 Mo · les trois</span></li>
+    </ul>
+    <p style="margin-top:10px">Format bodymovin 5.7, images intégrées, compatible lottie-web et lottie-ios. Rouge, sourcils, bouches,
+    larmes, vapeur et veine sont vectoriels : ils restent nets à toutes les tailles.</p>
+  </section>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<script src="donnees.js"></script>
+<script>
+(function(){
+  var IDLE = window.TR_IDLE, REAC = window.TR_REACTIONS;
+  var CARTES = [{nom:'attente', titre:'Il attend, furieux', ja:'むかっ', rom:'mukat — il rumine', de:0, a:119, duree:120,
+                 boucle:true, forte:0, idle:true}].concat(window.TR_CARTES);
+  var grille = document.getElementById('grille');
+  var vivant = null;
+
+  function tuer(){
+    if (!vivant) return;
+    try { vivant.idle && vivant.idle.destroy(); vivant.reac && vivant.reac.destroy(); } catch(e){}
+    vivant.carte.classList.remove('joue');
+    vivant.carte.querySelector('.boite.idle').hidden = true;
+    vivant.carte.querySelector('.boite.reacb').hidden = true;
+    vivant.carte.querySelector('.affiche').hidden = false;
+    vivant.carte.querySelector('.jauge').style.width = '0';
+    vivant = null;
+  }
+
+  function jouer(carte, d, avecIdle){
+    tuer();
+    var bIdle = carte.querySelector('.boite.idle');
+    var bReac = carte.querySelector('.boite.reacb');
+    var jauge = carte.querySelector('.jauge');
+    carte.querySelector('.affiche').hidden = true;
+    carte.classList.add('joue');
+    if (d.idle) {
+      var a = lottie.loadAnimation({container: bIdle.firstElementChild, renderer:'svg', loop:true, autoplay:true, animationData:IDLE});
+      bIdle.hidden = false;
+      a.addEventListener('enterFrame', function(){ jauge.style.width = (a.currentFrame / 119 * 100) + '%'; });
+      vivant = {idle:a, reac:null, carte:carte};
+      return;
+    }
+    var reac = lottie.loadAnimation({container: bReac.firstElementChild, renderer:'svg', loop:false, autoplay:false, animationData:REAC});
+    var anIdle = null;
+    if (avecIdle) {
+      anIdle = lottie.loadAnimation({container: bIdle.firstElementChild, renderer:'svg', loop:true, autoplay:true, animationData:IDLE});
+      anIdle.goToAndPlay(37, true);
+    }
+    vivant = {idle:anIdle, reac:reac, carte:carte};
+    function lancer(){
+      if (!vivant || vivant.carte !== carte) return;
+      bIdle.hidden = true; bReac.hidden = false;
+      reac.playSegments([d.de, d.a], true);
+    }
+    reac.addEventListener('enterFrame', function(){
+      jauge.style.width = Math.min(100, reac.currentFrame / Math.max(1, d.a - d.de) * 100) + '%';
+    });
+    reac.addEventListener('complete', function(){
+      if (avecIdle) {
+        bReac.hidden = true; bIdle.hidden = false;
+        setTimeout(function(){ if (vivant && vivant.carte === carte) tuer(); }, 1500);
+      } else tuer();
+    });
+    if (avecIdle) { bIdle.hidden = false; setTimeout(lancer, 1250); }
+    else lancer();
+  }
+
+  CARTES.forEach(function(d){
+    var c = document.createElement('div'); c.className = 'carte';
+    var actions = d.idle
+      ? '<button type="button" data-a="seul">Jouer la boucle</button>'
+      : '<button type="button" data-a="seul">Jouer</button><button type="button" data-a="idle">Avec l\'idle</button>';
+    c.innerHTML =
+      '<button type="button" class="scene" aria-label="Jouer ' + d.titre + '">' +
+        '<img class="affiche" src="affiches/' + d.nom + '.jpg" alt="Taro rouge, ' + d.titre + '" loading="lazy">' +
+        '<div class="boite idle" hidden><div class="cadre1254"></div></div>' +
+        '<div class="boite reacb" hidden><div class="reac"></div></div>' +
+        '<span class="jauge"></span>' +
+        '<span class="loupe">' + (d.idle ? 'boucle · 1254' : 'image ' + d.forte + ' / ' + d.duree) + '</span>' +
+      '</button>' +
+      '<div class="pied">' +
+        '<div class="nom"><b>' + d.titre + '</b><span class="ja" lang="ja">' + d.ja + '</span></div>' +
+        '<p class="rom">' + d.rom + '</p>' +
+        '<div class="faits">' +
+          '<span class="fait">' + d.duree + ' images</span>' +
+          '<span class="fait">' + (d.duree / 30).toFixed(2).replace('.', ',') + ' s</span>' +
+          '<span class="fait">' + d.de + ' → ' + d.a + '</span>' +
+          (d.boucle ? '<span class="fait boucle">boucle</span>' : '') +
+        '</div>' +
+        '<div class="actions">' + actions + '</div>' +
+      '</div>';
+    c.querySelector('.scene').addEventListener('click', function(){ jouer(c, d, false); });
+    c.querySelector('[data-a="seul"]').addEventListener('click', function(){ jouer(c, d, false); });
+    var bi = c.querySelector('[data-a="idle"]');
+    if (bi) bi.addEventListener('click', function(){ jouer(c, d, true); });
+    grille.appendChild(c);
+  });
+
+  document.getElementById('tailles').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    tuer();
+    [].forEach.call(this.querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', String(x === b)); });
+    var pt = parseInt(b.dataset.t, 10);
+    if (!pt) { grille.classList.remove('reel'); document.documentElement.style.removeProperty('--carte-l'); return; }
+    document.documentElement.style.setProperty('--carte-l', Math.round(pt * 1672 / 1254) + 'px');
+    grille.classList.add('reel');
+  });
+})();
+</script>

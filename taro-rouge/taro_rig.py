@@ -15,6 +15,16 @@ PIV_TETE = (700.0, 760.0)
 PIV_OREILLE = {'g': (352.0, 352.0), 'd': (826.0, 214.0)}
 PIV_QUEUE = (480.0, 940.0)
 PIV_COU = (722.0, 860.0)
+# corps articule (voir corps.py)
+PIV_TORSE = (690.0, 1050.0)                      # taille : penche, gonfle, se tasse
+S_G, E_G = (488.0, 822.0), (441.0, 901.0)        # epaule / coude gauche (a l'ecran)
+S_D, E_D = (928.0, 806.0), (957.7, 854.6)        # epaule / coude droit
+H_JAMBE = (712.0, 1088.0)
+# tassement du short : perpendiculairement a la ligne entrejambe -> coin haut exterieur visible de la jambe ; ni
+# l'entrejambe ni le coin sous l'ourlet du sweat ne bougent, seul l'ourlet du short remonte avec le pied
+TASSE_P0 = (712.0, 1086.0)
+TASSE_ANGLE = {'g': 4.06, 'd': -10.6}
+TALON_G, TALON_D = (626.0, 1180.0), (770.0, 1186.0)
 
 REPOS = {
     'root.p': (0, 0), 'root.r': 0, 'root.s': (1, 1),
@@ -22,7 +32,11 @@ REPOS = {
     'oreille_g.r': 0, 'oreille_d.r': 0,
     'queue.r': 0, 'queue.s': (1, 1),
     'cou.s': (1, 1),
-    'rage': 0,
+    'torse.p': (0, 0), 'torse.r': 0, 'torse.s': (1, 1),
+    'epaule_g.r': 0, 'epaule_g.p': (0, 0), 'coude_g.r': 0,
+    'epaule_d.r': 0, 'epaule_d.p': (0, 0), 'coude_d.r': 0,
+    'jambe_g.r': 0, 'jambe_d.r': 0, 'jambe_g.s': (1, 1), 'jambe_d.s': (1, 1), 'pied_g.r': 0, 'pied_d.r': 0, 'pied_g.p': (0, 0), 'pied_d.p': (0, 0),
+    'rage': 0, 'bouchon': 0,
     'sourcil_g': 'colere', 'sourcil_d': 'colere', 'sourcil_g.p': (0, 0), 'sourcil_d.p': (0, 0),
     'plis': 'colere',
     'bouche': 'moue', 'bouche.s': (1, 1), 'bouche.p': (0, 0), 'bouche.r': 0,
@@ -236,14 +250,31 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
     nm = lambda s: f'{tl.nom}.{s}'
     # --- nulls
     i_scene, i_root, i_tete, i_og, i_od = I(), I(), I(), I(), I()
+    i_torse, i_eg, i_cg, i_ed, i_cd, i_jg, i_jd, i_pg, i_pd = I(), I(), I(), I(), I(), I(), I(), I(), I()
+
+    def articulation(nom, ind, piv, parent, r=None, p=None, s=None):
+        return L.calque_null(nm(nom), ind, ip, op, L.ks(
+            p=p_prop(C[p], piv, t0) if p else {'a': 0, 'k': [piv[0], piv[1], 0]},
+            a={'a': 0, 'k': [piv[0], piv[1], 0]},
+            r=r_prop(C[r], t0) if r else None, s=s_prop(C[s], t0) if s else None), parent=parent)
+
     nulls = [
         L.calque_null(nm('scene'), i_scene, ip, op, L.ks(p={'a': 0, 'k': [decalage_scene[0], decalage_scene[1], 0]})),
         L.calque_null(nm('root'), i_root, ip, op, L.ks(
             p=p_prop(C['root.p'], PIV_ROOT, t0), a={'a': 0, 'k': [PIV_ROOT[0], PIV_ROOT[1], 0]},
             s=s_prop(C['root.s'], t0), r=r_prop(C['root.r'], t0)), parent=i_scene),
+        articulation('torse', i_torse, PIV_TORSE, i_root, r='torse.r', p='torse.p', s='torse.s'),
         L.calque_null(nm('tete'), i_tete, ip, op, L.ks(
             p=p_prop(C['tete.p'], PIV_TETE, t0), a={'a': 0, 'k': [PIV_TETE[0], PIV_TETE[1], 0]},
-            s=s_prop(C['tete.s'], t0), r=r_prop(C['tete.r'], t0)), parent=i_root),
+            s=s_prop(C['tete.s'], t0), r=r_prop(C['tete.r'], t0)), parent=i_torse),
+        articulation('epaule_g', i_eg, S_G, i_torse, r='epaule_g.r', p='epaule_g.p'),
+        articulation('coude_g', i_cg, E_G, i_eg, r='coude_g.r'),
+        articulation('epaule_d', i_ed, S_D, i_torse, r='epaule_d.r', p='epaule_d.p'),
+        articulation('coude_d', i_cd, E_D, i_ed, r='coude_d.r'),
+        articulation('jambe_g', i_jg, H_JAMBE, i_root, r='jambe_g.r'),
+        articulation('jambe_d', i_jd, H_JAMBE, i_root, r='jambe_d.r'),
+        articulation('pied_g', i_pg, TALON_G, i_jg, r='pied_g.r', p='pied_g.p'),
+        articulation('pied_d', i_pd, TALON_D, i_jd, r='pied_d.r', p='pied_d.p'),
     ]
     for cote, i_o in (('g', i_og), ('d', i_od)):
         pv = PIV_OREILLE[cote]
@@ -311,7 +342,7 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
                             p_extra=C['yeux.p'] if (etat == 'fous' and C['yeux.p']) else None))
 
     # --- fx (calques devant / derriere)
-    parents = {'scene': i_scene, 'root': i_root, 'tete': i_tete}
+    parents = {'scene': i_scene, 'root': i_root, 'tete': i_tete, 'torse': i_torse}
     devant, derriere, sous_bouche = [], [], []
     for f in tl.fx:
         for (place, calque) in f(t0, I, ip, op, parents):
@@ -356,8 +387,15 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
             sur_oreille[cote] = [matte_ligne(f'remplissage_oreille_{cote}'), normal(f'oreille_{cote}_normal', i_o)]
 
     pile = []
+    nulls_tasse = []
     pile += devant
-    pile.append(img('torse', i_root))
+    # corps articule : capuche avant (languettes), bras (chaque avant-bras devant son haut de bras), torse seul
+    pile.append(img('corps_capuche_avant', i_torse))
+    pile.append(img('corps_avbras_g', i_cg))
+    pile.append(img('corps_bras_g', i_eg))
+    pile.append(img('corps_avbras_d', i_cd))
+    pile.append(img('corps_bras_d', i_ed))
+    pile.append(img('corps_torse', i_torse))
     pile += sur_visage
     pile += [contour, matte, interieur]
     pile += sous_bouche
@@ -371,18 +409,34 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
         if rage_o is not None:
             pile.append(img(f'oreille_{cote}_rage', i_o, o=rage_o))
         pile.append(img(f'oreille_{cote}_rouge', i_o))
-    pile.append(img('cou', i_root, pivot=PIV_COU, s=s_prop(C['cou.s'], t0)))
+    pile.append(img('cou', i_torse, pivot=PIV_COU, s=s_prop(C['cou.s'], t0)))
+    # jambes (la gauche devant la droite) et pieds, derriere l'ourlet du sweat
+    # (le short se tasse quand le genou monte : le bas de la jambe suit le pied, la chaussure reste visible)
+    for cote, i_j in (('g', i_jg), ('d', i_jd)):
+        i_a, i_b = I(), I()
+        piv = {'a': 0, 'k': [TASSE_P0[0], TASSE_P0[1], 0]}
+        nulls_tasse.append(L.calque_null(nm(f'tasse_{cote}_axe'), i_a, ip, op, L.ks(
+            p=piv, a=piv, r={'a': 0, 'k': TASSE_ANGLE[cote]}), parent=i_j))
+        nulls_tasse.append(L.calque_null(nm(f'tasse_{cote}'), i_b, ip, op, L.ks(
+            p=piv, a=piv, s=s_prop(C[f'jambe_{cote}.s'], t0)), parent=i_a))
+        pile.append(img(f'corps_jambe_{cote}', i_b, pivot=TASSE_P0, r={'a': 0, 'k': -TASSE_ANGLE[cote]}))
+    pile.append(img('corps_pied_g', i_pg))
+    pile.append(img('corps_pied_d', i_pd))
     # joint d'encre pose sur le haut de la queue (meme transformation que la queue), cache par la tete au repos
     from joint import polygone
     from vecteur import Chemin
     traces = [L.trace({'a': 0, 'k': Chemin(p_, ferme=True).lottie()}, nm=f'joint{k}') for k, p_ in enumerate(polygone())]
     pile.append(L.calque_forme(nm('joint_queue'), I(), ip, op, [L.groupe('joint', traces + [L.rempli(TR.ENCRE)])],
         L.ks(p={'a': 0, 'k': [PIV_QUEUE[0], PIV_QUEUE[1], 0]}, a={'a': 0, 'k': [PIV_QUEUE[0], PIV_QUEUE[1], 0]},
-             r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)), parent=i_root))
-    pile.append(img('queue', i_root, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)))
-    pile.append(img('capuche', i_root))
+             r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)), parent=i_torse))
+    # bouchon de fourrure sur le petit triangle de fond : visible seulement quand la queue ou la tete bougent beaucoup
+    pile.append(img('queue_bouchon', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0),
+                    o=o_prop(C['bouchon'], t0)))
+    pile.append(img('queue', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)))
+    pile.append(img('capuche', i_torse))
     pile += derriere
     pile += nulls
+    pile += nulls_tasse
     return pile, I.n
 
 
@@ -409,8 +463,10 @@ def monde(tl, pt, t, os_='tete'):
     """Position (repere scene, sans decalage de cadre) d'un point de la tete/du corps a l'instant t."""
     Mr = _M(tl.eval('root.p', t), float(tl.eval('root.r', t)[0]), tl.eval('root.s', t), PIV_ROOT)
     M = Mr
+    if os_ in ('tete', 'torse'):
+        M = Mr @ _M(tl.eval('torse.p', t), float(tl.eval('torse.r', t)[0]), tl.eval('torse.s', t), PIV_TORSE)
     if os_ == 'tete':
-        M = Mr @ _M(tl.eval('tete.p', t), float(tl.eval('tete.r', t)[0]), tl.eval('tete.s', t), PIV_TETE)
+        M = M @ _M(tl.eval('tete.p', t), float(tl.eval('tete.r', t)[0]), tl.eval('tete.s', t), PIV_TETE)
     v = M @ np.array([pt[0], pt[1], 1.0])
     return v[:2]
 

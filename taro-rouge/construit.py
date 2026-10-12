@@ -148,6 +148,16 @@ def queue_complete2():
         if petites.any():
             z = ndi.binary_dilation(petites, iterations=2) & sil
             Q = repeint(Q, z, source=sil & ~z & ~encre_de(Q, 0.30), graine=11, rayon=6)
+    # fin trait noir (reste du contour de la joue) entre la partie visible de la queue et la partie cachee
+    # sous la joue : repeint avec les couleurs voisines (il se voyait des que la tete se soulevait)
+    d_bord = ndi.distance_transform_edt(sil)
+    fil = (Q[..., :3].mean(2) < 0.32) & sil & (d_bord > 22) & (xx > 250) & (xx < 400) & (yy > 690) & (yy < 775)
+    if fil.any():
+        from tete import push_pull
+        z_fil = ndi.binary_dilation(fil, iterations=2) & sil & (d_bord > 18)
+        src_f = sil & ~z_fil & (Q[..., :3].mean(2) >= 0.32)
+        P_ = push_pull(Q[..., :3], src_f.astype(np.float32), niveaux=5)
+        Q[..., :3] = np.where(z_fil[..., None], P_, Q[..., :3])
     # petit triangle de fond entre le menton, la capuche et la queue : visible sur l'original au repos,
     # la queue prolongee ne doit pas le boucher. Les bords recoupes sont encres (au repos ils sont
     # sous les traits du menton et de la capuche ; si la queue tourne un peu, on voit un trait, pas une coupe).

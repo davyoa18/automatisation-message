@@ -360,4 +360,17 @@ def calme():
     return tl
 
 
+def _avec_corps(f):
+    """Ajoute le jeu d'acteur du corps (corps_anim.py) a une animation du visage."""
+    import corps_anim as CA
+    def g():
+        tl = f()
+        CA.TOUS[f.__name__](tl)
+        CA.bouchon_queue(tl)
+        return tl
+    g.__name__ = f.__name__
+    return g
+
+
+attente, crie, pleure, explose, bascule, calme = (_avec_corps(f) for f in (attente, crie, pleure, explose, bascule, calme))
 TOUTES = {'attente': attente, 'crie': crie, 'pleure': pleure, 'explose': explose, 'bascule': bascule, 'calme': calme}

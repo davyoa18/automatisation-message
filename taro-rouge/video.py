@@ -4,7 +4,8 @@ import os, subprocess, sys
 from PIL import Image
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-B = f'{ICI}/out/vid2'
+SRC = os.environ.get('SORTIE', 'livrable')
+B = f'{ICI}/out/vid_{SRC}'
 T = 720
 
 
@@ -19,8 +20,8 @@ def main():
     for f in os.listdir(f'{B}/seq'):
         os.remove(f'{B}/seq/{f}')
     normal = rend(f'{ICI}/idle.json', f'{B}/normal', 540)            # idle d'origine de l'app
-    attente = rend(f'{ICI}/livrable/taro_rouge_attente.json', f'{B}/attente', 540)
-    reac = {n: rend(f'{ICI}/livrable/taro_rouge_{n}.json', f'{B}/{n}', T)
+    attente = rend(f'{ICI}/{SRC}/taro_rouge_attente.json', f'{B}/attente', 540)
+    reac = {n: rend(f'{ICI}/{SRC}/taro_rouge_{n}.json', f'{B}/{n}', T)
             for n in ('bascule', 'crie', 'pleure', 'explose', 'calme')}
     k = [0]
 

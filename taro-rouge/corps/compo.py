@@ -30,7 +30,7 @@ def pose(P, C, a_epaule_g=0, a_coude_g=0, a_epaule_d=0, a_coude_d=0, a_jambe_g=0
     Mjg = M_rot(C.H_JAMBE, a_jambe_g); Mjd = M_rot(C.H_JAMBE, a_jambe_d)
     Mpg = compose3(Mjg, compose3(T_(*p_pied_g), M_rot(C.TALON_G, a_pied_g)))
     Mpd = compose3(Mjd, compose3(T_(*p_pied_d), M_rot(C.TALON_D, a_pied_d)))
-    ordre = [('capuche_avant', I), ('avbras_g', Mag), ('bras_g', Mbg), ('avbras_d', Mad), ('bras_d', Mbd),
+    ordre = [('capuche_avant', I), ('avbras_g', Mag), ('pli_coude_g', Mbg), ('bras_g', Mbg), ('avbras_d', Mad), ('bras_d', Mbd),
              ('ombre_bras_g', Mbg), ('ombre_avbras_g', Mag), ('ombre_bras_d', Mbd), ('ombre_avbras_d', Mad), ('torse', I),
              ('jambe_g', Mjg), ('jambe_d', Mjd), ('pied_g', Mpg), ('pied_d', Mpd)]
     out = np.zeros((1254, 1254, 3), np.float32); out[:] = fond

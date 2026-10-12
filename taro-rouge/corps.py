@@ -145,6 +145,7 @@ def nettoie_zone(z, ink, graines):
 FEN_HANCHE_G = (395, 950, 480, 1035)
 FEN_HANCHE_D = (860, 925, 995, 1012)
 W_CONTOUR = 17.0
+EP_POING = 16.8          # epaisseur du trait du contour du poing (mesuree au bord exterieur)
 
 
 def hanche(z, ink, fen):
@@ -348,19 +349,30 @@ def halo(T, zone, autour, ep=3):
     bord = zone & ndi.binary_dilation(~zone, iterations=1)
     bord_encre = bord & ndi.binary_dilation(encre & zone, iterations=1)
     bande = ndi.binary_dilation(bord_encre, iterations=ep) & ~zone & autour & (T[..., 3] > 0.98)
+    # tissu de reference : l'anneau juste au-dela du halo (couleur locale, ombre comprise) ; sinon, quand le bras
+    # s'ecarte, le halo garde une couleur moyenne plus claire et dessine un fil le long de l'ancien contour
     propre = autour & ~ndi.binary_dilation(encre | zone, iterations=ep + 2)
-    base = push_pull(T[..., :3], propre.astype(np.float32), niveaux=6)
+    proche = propre & ndi.binary_dilation(zone, iterations=ep + 8)
+    base = push_pull(T[..., :3], proche.astype(np.float32), niveaux=4)
+    loin = push_pull(T[..., :3], propre.astype(np.float32), niveaux=6)
+    base = np.where((ndi.distance_transform_edt(~proche) <= 6)[..., None], base, loin)
     # projection sur le segment tissu -> encre : seuls les vrais melanges avec l'encre sont du halo
     # (une ombre orange plus saturee n'est pas sur ce segment et reste au sweat)
     v = ENCRE[None, None] - base
     t = ((T[..., :3] - base) * v).sum(-1) / np.maximum((v * v).sum(-1), 1e-6)
     t = np.clip(t, 0, 1)
     resid = np.abs(base + t[..., None] * v - T[..., :3]).max(-1)
-    m = bande & (t > 0.04) & (resid < 0.07)
+    # tout le lisere d'anticrenelage part avec le bras en encre semi-transparente (meme s'il n'est pas un melange
+    # exact tissu / encre : ecart de quelques % au repos) ; le sweat recoit le tissu local dessous. Ni points sombres
+    # sur le sweat quand le bras s'en va, ni pixels orange colles au contour du bras quand il bouge.
+    m = bande & (t > 0.03) & (resid < 0.25)
+    reste = np.zeros_like(m)
     # pas les bords des traits du sweat lui-meme (jonctions de contours) : ils restent au sweat
     encre_propre = encre & autour & ~ndi.binary_dilation(zone, iterations=ep + 1)
     m &= ~ndi.binary_dilation(encre_propre, iterations=ep + 1)
-    return m, t * m, base
+    reste &= ~ndi.binary_dilation(encre_propre, iterations=ep + 1)
+    reste &= ~ndi.binary_dilation(encre & autour, iterations=3)
+    return m | reste, np.where(reste, -1.0, t * m), base
 
 
 # calotte d'epaule : arc centre sur le pivot, cache sous la languette ; en tournant, il glisse sur lui-meme
@@ -498,7 +510,8 @@ def pieces_corps():
     halos = {}
     for cote, z in (('g', zg), ('d', zd)):
         m, t, base = halo(T, z['bras'], torse_tissu)
-        halos[cote] = (m, t)
+        # t = -1 : lisere opaque (couleur d'origine), sinon encre semi-transparente
+        halos[cote] = (m, t, T[..., :3].copy())
         T2 = T.copy()
         T2[..., :3] = np.where(m[..., None], base, T[..., :3])
         T = T2
@@ -514,6 +527,7 @@ def pieces_corps():
     sweat0 = A & ~zg['bras'] & ~zd['bras'] & ~lang & ~jambes
     # antialiasing du trait de l'ourlet sur le short : il reste au sweat (encre semi-transparente, devant)
     m_h, t_h, base_h = halo(T, sweat0, zj['short'])
+    coul_h = T[..., :3].copy()
     T2 = T.copy()
     T2[..., :3] = np.where(m_h[..., None], base_h, T[..., :3])
     T = T2
@@ -522,15 +536,44 @@ def pieces_corps():
     Q = torse_complet(T, conf, zg, zd, lang)
     torse_zone = sweat0
     m_h, t_h = halo_ourlet
-    Q[..., :3] = np.where(m_h[..., None], ENCRE, Q[..., :3])
-    Q[..., 3] = np.where(m_h, np.maximum(Q[..., 3], t_h), Q[..., 3])
-    # ombre portee du coude gauche sur le sweat (coin orange fonce a droite du pli) : elle part avec le bras
-    m_o, a_o, sous_o, S_o = ombre_portee(T, zg['bras'], conf & ~ndi.binary_dilation(encre_de(T, 0.30), iterations=1))
+    op_h = m_h & (t_h < 0)
+    Q[..., :3] = np.where(m_h[..., None], np.where(op_h[..., None], coul_h, ENCRE), Q[..., :3])
+    Q[..., 3] = np.where(m_h, np.where(op_h, 1.0, np.maximum(Q[..., 3], t_h)), Q[..., 3])
+    # ombres portees des bras sur le sweat (coin orange fonce a droite du pli du coude, ombre sous les poings) :
+    # elles partent avec le bras, sinon elles restent en plaques a bord net quand les poings glissent
     yy_, xx_ = np.mgrid[0:N, 0:N]
-    m_o &= (xx_ >= 552) & (xx_ <= 615) & (yy_ >= 868) & (yy_ <= 940)
-    a_o = a_o * m_o
-    Q[..., :3] = np.where(m_o[..., None], sous_o, Q[..., :3])
-    ombre_g = (m_o, a_o, S_o)
+    ombres = []
+    tissu_t = conf & ~ndi.binary_dilation(encre_de(T, 0.30), iterations=1)
+    for cote, z, boites in (('g', zg, OMBRES_G), ('d', zd, OMBRES_D)):
+        m_o, a_o, sous_o, S_o = ombre_portee(T, z['bras'], tissu_t)
+        dans = np.zeros((N, N), bool)
+        for (x0, y0, x1, y1) in boites:
+            dans |= (xx_ >= x0) & (xx_ <= x1) & (yy_ >= y0) & (yy_ <= y1)
+        m_o &= dans
+        # seulement les plages d'ombre collees au bras (pas les grains isoles du tissu)
+        lab_o, n_o = ndi.label(m_o)
+        if n_o:
+            colle = ndi.binary_dilation(z['bras'], iterations=3)
+            ids = [i for i in range(1, n_o + 1) if (colle & (lab_o == i)).any() and (lab_o == i).sum() >= 25]
+            m_o = np.isin(lab_o, ids)
+        # l'ombre part en entier avec le bras, avec un lisere de tissu fondu sur 4 px (dessin d'origine) ; le
+        # sweat recoit dessous son tissu sans ombre : ni double bande, ni bord grumeleux quand le bras bouge
+        coul_o = None
+        if m_o.any():
+            from tete import push_pull
+            m_o = ndi.binary_closing(m_o, iterations=2) & dans
+            m_o = ndi.binary_fill_holes(m_o)
+            d_o = ndi.distance_transform_edt(~m_o)
+            lisere = (d_o <= 4) & ~m_o & tissu_t
+            a_o = np.where(m_o, 1.0, np.where(lisere, np.clip(1 - d_o / 4.5, 0, 1), 0.0)).astype(np.float32)
+            src = tissu_t & ~ndi.binary_dilation(m_o, iterations=6) & ndi.binary_dilation(m_o, iterations=30)
+            base_o = push_pull(T[..., :3], src.astype(np.float32), niveaux=5)
+            base_o = cv2.GaussianBlur(base_o, (0, 0), 2.0)
+            coul_o = T[..., :3].copy()
+            m_o = m_o | lisere
+            Q[..., :3] = np.where(m_o[..., None], base_o, Q[..., :3])
+        ombres.append((cote, z, m_o, a_o * m_o, coul_o))
+    DEBUG['ombres'] = ombres
     out['torse'] = Q
     conf_torse = conf
     # --- bras gauche (haut, derriere l'avant-bras) : prolonge sous la languette de capuche et sous l'avant-bras,
@@ -568,18 +611,67 @@ def pieces_corps():
     E[..., 3] *= zd['avb']
     out['avbras_d'] = adoucit_interne(E, zd['avb'], T, zd['haut'])
     _ajoute_halo(out, 'bras_d', 'avbras_d', zd)
-    m_o, a_o, S_o = ombre_g
-    d_h, d_a = ndi.distance_transform_edt(~zg['haut']), ndi.distance_transform_edt(~zg['avb'])
-    for nom, sel in (('bras_g', m_o & (d_h <= d_a)), ('avbras_g', m_o & (d_a < d_h))):
-        P_ = out[nom]
-        P_[..., :3] = np.where(sel[..., None], S_o, P_[..., :3])
-        P_[..., 3] = np.where(sel, np.maximum(P_[..., 3], a_o), P_[..., 3])
+    m_tous = np.zeros((N, N), bool)
+    for cote, z, m_o, a_o, S_o in ombres:
+        # au haut du bras (il ne tourne pas quand le poing se replie sur la poitrine : l'ombre reste au coude)
+        if S_o is None:
+            continue
+        for nom, sel in ((f'bras_{cote}', m_o),):
+            P_ = out[nom]
+            libre_ = sel & (P_[..., 3] < 0.5)
+            P_[..., :3] = np.where(libre_[..., None], S_o, P_[..., :3])
+            P_[..., 3] = np.where(libre_, a_o, P_[..., 3])
+        m_tous |= m_o
+    m_o = m_tous
+    # contour du bas des poings (fenetres de hanche) : un trait complet et lisse d'epaisseur constante autour du
+    # poing ; le poing n'emporte plus de morceau du trait du flanc (bloc noir, pointilles) quand il glisse
+    ENC_ = np.median(T[..., :3][ink0 & (T[..., 3] > 0.98) & (lum(T) < 0.12)], axis=0)
+    yy_, xx_ = np.mgrid[0:N, 0:N]
+    for avb, fen_ in (('avbras_g', FEN_HANCHE_G), ('avbras_d', FEN_HANCHE_D)):
+        Pa = out[avb]
+        fab = (Pa[..., 3] > 0.5) & ~ink0
+        d_f = ndi.distance_transform_edt(~fab)
+        w = (xx_ >= fen_[0]) & (xx_ < fen_[2]) & (yy_ >= fen_[1]) & (yy_ < fen_[3]) & ~fab
+        # jamais au-dela de ce que le poing ou l'encre d'origine couvraient (silhouette et repos inchanges) ;
+        # on ne fait qu'enlever ce qui depasse du trait du poing (le morceau du trait du flanc)
+        w &= ink0 | (Pa[..., 3] > 0.02)
+        a_n = np.clip(EP_POING + 0.5 - d_f, 0, 1)
+        plafond = np.maximum(Pa[..., 3], np.where(ink0, T[..., 3], 0.0))
+        a_n = np.minimum(a_n, plafond)
+        noir = w & ink0 & (a_n > 0) & (Pa[..., 3] < 0.02)
+        Pa[..., :3] = np.where(noir[..., None], T[..., :3], Pa[..., :3])
+        # l'encre que le poing ne garde plus revient au sweat (le repos ne change pas : c'est le trait du flanc)
+        rendu = w & ink0 & (Pa[..., 3] > 0.5) & (a_n < Pa[..., 3] - 0.3) & (T[..., 3] > 0.5)
+        Pt = out['torse']
+        Pt[..., :3] = np.where(rendu[..., None], T[..., :3], Pt[..., :3])
+        Pt[..., 3] = np.where(rendu, np.maximum(Pt[..., 3], T[..., 3]), Pt[..., 3])
+        Pa[..., 3] = np.where(w, a_n, Pa[..., 3])
     # couture entre le dessin d'origine et la peinture cachee sous les bras (fil clair, points sombres le long de
     # l'ancien contour des poings) : lissee, seulement la ou un bras la couvre au repos (le repos ne change pas)
     couvre = np.zeros((N, N), bool)
     for nom in ('bras_g', 'avbras_g', 'bras_d', 'avbras_d'):
         couvre |= out[nom][..., 3] > 0.97
     out['torse'] = lisse_couture(out['torse'], conf_torse, zg['bras'] | zd['bras'], couvre & ~m_o)
+    # sous le poing (cache au repos), le flanc du sweat n'a que son trait de contour : pas de bloc d'encre de la
+    # jonction poing / hanche qui se decouvre quand le poing remonte
+    for fen_, contour_, ep_, loin_ in ((FEN_HANCHE_G, CONTOUR_FLANC_G, EP_FLANC['g'], 250),
+                                       (FEN_HANCHE_D, CONTOUR_FLANC_D, EP_FLANC['d'], 1150)):
+        out['torse'] = nettoie_flanc(out['torse'], couvre, contour_, ep_, fen_, loin_, T)
+    # eperons aux jonctions poing / hanche : petites pointes d'encre (du torse sous le poing, du poing sur le
+    # trait du flanc) qui se decouvrent quand le poing glisse ; on les retire la ou rien ne change au repos
+    yy_, xx_ = np.mgrid[0:N, 0:N]
+    for (x0, y0, x1, y1), avb in ((FEN_HANCHE_G, 'avbras_g'), (FEN_HANCHE_D, 'avbras_d')):
+        fen = (xx_ >= x0) & (xx_ < x1) & (yy_ >= y0) & (yy_ < y1)
+        Pt = out['torse']
+        plein = Pt[..., 3] > 0.5
+        pointes = plein & ~ndi.binary_opening(plein, structure=np.ones((3, 3)), iterations=2) & fen & couvre
+        Pt[..., 3] = np.where(pointes, 0.0, Pt[..., 3])
+        Pa = out[avb]
+        plein_a = Pa[..., 3] > 0.5
+        sous_noir = (Pt[..., 3] > 0.9) & (lum(Pt) < 0.3)
+        barbes = plein_a & ~ndi.binary_opening(plein_a, structure=np.ones((3, 3)), iterations=2) & fen & sous_noir
+        Pa[..., 3] = np.where(barbes, 0.0, Pa[..., 3])
+        DEBUG[f'pointes_{avb}'] = (int(pointes.sum()), int(barbes.sum()))
     # --- jambes (moities du short, chevauchement de 8 px a l'entrejambe) et pieds
     yy, xx = np.mgrid[0:N, 0:N]
     # rallonge du haut des jambes : bien a l'interieur du sweat (il bouge un peu : le torse se penche et respire)
@@ -640,13 +732,41 @@ def pieces_corps():
                 # il continue sous l'avant-bras, vers le bas a gauche (pas le trait du haut de la manchette)
                 yy_, xx_ = np.mgrid[0:N, 0:N]
                 suite = fi & (ndi.distance_transform_edt(~bi) <= 16.0) & (xx_ <= 872) & (yy_ >= 866) & (yy_ <= 905)
-            bande &= d_ext <= 24
+            if b == 'bras_g':
+                bande &= d_ext <= 24      # le bras gauche se replie (pleure, explose) : pas de copie du pli
             if suite is not None:
                 bande |= suite
         Pb = out[b]
         Pb[..., :3] = np.where(bande[..., None], T[..., :3], Pb[..., :3])
         Pb[..., 3] = np.where(bande, np.maximum(Pb[..., 3], T[..., 3]), Pb[..., 3])
+    separe_pli_coude_g(out, zg)
     return out
+
+
+# pli doux du coude gauche (trait du haut du bras) et ombre du coude : calque a part, qui s'efface quand le poing
+# se replie sur la poitrine (sinon le trait ressort en corne au-dessus de l'avant-bras, l'ombre en drapeau)
+POLY_PLI_G = [(538, 812), (576, 806), (594, 858), (614, 886), (616, 948), (561, 948), (561, 906), (546, 902),
+              (538, 860)]
+
+
+def separe_pli_coude_g(out, zg):
+    from tete import push_pull
+    P_ = out['bras_g']
+    poly = masque_poly(POLY_PLI_G) > 0.5
+    region = poly & (P_[..., 3] > 0.01)
+    ov = np.zeros_like(P_)
+    ov[region] = P_[region]
+    out['pli_coude_g'] = ov
+    haut = zg['haut']
+    dans = region & haut
+    ref = lum(P_)[haut & (P_[..., 3] > 0.9)]
+    sombre = lum(P_) < np.percentile(ref, 50) - 0.04
+    src = (P_[..., 3] > 0.9) & haut & ~ndi.binary_dilation(poly, iterations=2) & ~ndi.binary_dilation(sombre, iterations=2)
+    src &= ndi.binary_dilation(poly, iterations=30)
+    F = push_pull(P_[..., :3], src.astype(np.float32), niveaux=6)
+    F = cv2.GaussianBlur(F, (0, 0), 3.0)
+    P_[..., :3] = np.where(dans[..., None], F, P_[..., :3])
+    P_[..., 3] = np.where(region & ~haut, 0.0, P_[..., 3])
 
 
 def efface_encre_sous_rabat(Q, lang, T, conf, marge=12):
@@ -665,6 +785,39 @@ def efface_encre_sous_rabat(Q, lang, T, conf, marge=12):
         F = push_pull(Q[..., :3], src.astype(np.float32), niveaux=6)
         Q[..., :3] = np.where(z[..., None], F, Q[..., :3])
     return Q
+
+
+def nettoie_flanc(Q, couvre, contour, ep, fen, loin_x, T):
+    """Dans la fenetre de hanche, la ou le poing couvre le sweat au repos : trait du flanc (bande d'epaisseur ep le
+    long du contour) a l'encre, tissu du sweat a l'interieur, rien a l'exterieur (fond)."""
+    from tete import push_pull
+    yy, xx = np.mgrid[0:N, 0:N]
+    w = (xx >= fen[0]) & (xx < fen[2]) & (yy >= fen[1]) & (yy < fen[3]) & couvre
+    if not w.any():
+        return Q
+    ext, c = _cote_contour(contour, loin_x)
+    trait = masque_trait(c, ep)
+    ligne = trait > 0.5
+    Q = Q.copy()
+    enc = np.median(T[..., :3][encre_de(T, 0.30) & (T[..., 3] > 0.98) & (lum(T) < 0.12)], axis=0)
+    dedans = w & ~ext & ~ligne
+    tissu = (Q[..., 3] > 0.9) & ~ndi.binary_dilation(lum(Q) < 0.35, iterations=2) & ~w
+    F = push_pull(Q[..., :3], (tissu & ndi.binary_dilation(w, iterations=25)).astype(np.float32), niveaux=5)
+    sombre = dedans & (lum(Q) < 0.45)
+    Q[..., :3] = np.where(ndi.binary_dilation(sombre, iterations=1)[..., None] & dedans[..., None], F, Q[..., :3])
+    a_t = np.clip(trait, 0, 1)
+    sel = w & (trait > 0.02)
+    Q[..., :3] = np.where(sel[..., None], Q[..., :3] * (1 - a_t[..., None]) + enc * a_t[..., None], Q[..., :3])
+    dehors = w & ext & (trait < 0.5)
+    Q[..., 3] = np.where(dehors, np.minimum(Q[..., 3], np.clip(trait * 2, 0, 1)), Q[..., 3])
+    return Q
+
+
+DEBUG = {}
+# boites ou l'ombre portee d'un bras sur le sweat part avec lui (repere scene)
+# (seulement le coin du coude : les ombres sous les poings restent sur le sweat, sinon elles pendent en eclats)
+OMBRES_G = [(552, 868, 615, 940)]
+OMBRES_D = []
 
 
 def lisse_couture(Q, conf, bras, couvre, larg=3):
@@ -686,13 +839,14 @@ def lisse_couture(Q, conf, bras, couvre, larg=3):
 
 def _ajoute_halo(out, n_haut, n_avb, z):
     """Le halo du trait (sur le sweat) va a la piece de bras la plus proche, en encre semi-transparente."""
-    m, t = z['halo']
+    m, t, coul = z['halo']
+    opaque = m & (t < 0)
     d_h = ndi.distance_transform_edt(~z['haut'])
     d_a = ndi.distance_transform_edt(~z['avb'])
     for nom, sel in ((n_haut, m & (d_h <= d_a)), (n_avb, m & (d_a < d_h))):
         P = out[nom]
-        P[..., :3] = np.where(sel[..., None], ENCRE, P[..., :3])
-        P[..., 3] = np.where(sel, np.maximum(P[..., 3], t), P[..., 3])
+        P[..., :3] = np.where(sel[..., None], np.where(opaque[..., None], coul, ENCRE), P[..., :3])
+        P[..., 3] = np.where(sel, np.where(opaque, 1.0, np.maximum(P[..., 3], t)), P[..., 3])
 
 
 # ------------------------------------------------------------------ jambes et pieds

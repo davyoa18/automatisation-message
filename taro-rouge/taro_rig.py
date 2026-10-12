@@ -36,7 +36,7 @@ REPOS = {
     'epaule_g.r': 0, 'epaule_g.p': (0, 0), 'coude_g.r': 0,
     'epaule_d.r': 0, 'epaule_d.p': (0, 0), 'coude_d.r': 0,
     'jambe_g.r': 0, 'jambe_d.r': 0, 'jambe_g.s': (1, 1), 'jambe_d.s': (1, 1), 'pied_g.r': 0, 'pied_d.r': 0, 'pied_g.p': (0, 0), 'pied_d.p': (0, 0),
-    'rage': 0, 'bouchon': 0,
+    'rage': 0, 'bouchon': 0, 'pli_g': 1,
     'sourcil_g': 'colere', 'sourcil_d': 'colere', 'sourcil_g.p': (0, 0), 'sourcil_d.p': (0, 0),
     'plis': 'colere',
     'bouche': 'moue', 'bouche.s': (1, 1), 'bouche.p': (0, 0), 'bouche.r': 0,
@@ -392,6 +392,8 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
     # corps articule : capuche avant (languettes), bras (chaque avant-bras devant son haut de bras), torse seul
     pile.append(img('corps_capuche_avant', i_torse))
     pile.append(img('corps_avbras_g', i_cg))
+    # pli du coude gauche et ombre du coude : s'effacent quand le poing se replie sur la poitrine
+    pile.append(img('corps_pli_coude_g', i_eg, o=o_prop(C['pli_g'], t0) if C['pli_g'] else {'a': 0, 'k': 100}))
     pile.append(img('corps_bras_g', i_eg))
     pile.append(img('corps_avbras_d', i_cd))
     pile.append(img('corps_bras_d', i_ed))

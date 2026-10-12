@@ -40,6 +40,14 @@ Format bodymovin 5.7, images PNG intégrées, compatible lottie-web et lottie-io
 
 Le branchement dans le code de Talkana reste à faire : le dépôt de l'app n'était pas accessible depuis la session qui a produit ces fichiers.
 
+### Notes pour le branchement (React Native / Expo, `lottie-react-native`)
+
+- Deux calques superposés, comme les réactions actuelles : la boucle `taro_rouge_attente.json` (cadre 1254) affichée dans la sous-fenêtre de 75 % du cadre 1672, décalée de 12,5 % à gauche et 25 % en haut ; au-dessus, `taro_rouge_reactions.json` (cadre 1672), masqué hors réaction.
+- Une réaction = un segment, lu dans les marqueurs du fichier (`markers` : `tm` = début, `dr` = durée) plutôt qu'en dur : `crie` 0 (80), `pleure` 82 (104), `explose` 188 (112), `bascule` 302 (60), `calme` 364 (56).
+- Lecture : `ref.current?.play(tm, tm + dr)` sur le calque des réactions, `loop={false}` ; pendant la réaction on cache la boucle d'attente, et on la réaffiche dans `onAnimationFinish` (la réaction finit sur la pose de repos, le raccord est invisible).
+- La bascule part du Taro normal (image 0 de l'idle d'origine) et finit en pose de repos rouge ; le calme fait l'inverse : on enchaîne sur l'idle normal.
+- Choix de la réaction : voir le tableau ci-dessus (ton de la réplique), au plus une réaction par réplique, jamais deux fois la même d'affilée ; une réplique qui arrive pendant une réaction attend la fin.
+
 ## Comment c'est fabriqué
 
 1. **Pièces complètes** (`construit.py`, `exporte.py`, `joint.py`) : les pièces de l'idle d'origine étaient coupées là où elles étaient cachées. Elles sont reconstruites entières (oreilles séparées, menton et cou, queue prolongée en arc sous la joue, dos de capuche), chaque bord visible encré. Les jonctions oreilles / tête et le petit jour de fond sous le menton reproduisent l'original au repos.

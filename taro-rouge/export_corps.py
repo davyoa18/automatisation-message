@@ -4,7 +4,7 @@ import numpy as np
 import corps as C
 import production as P
 
-NOMS = ['capuche_avant', 'torse', 'bras_g', 'avbras_g', 'bras_d', 'avbras_d', 'jambe_g', 'jambe_d', 'pied_g', 'pied_d']
+NOMS = ['capuche_avant', 'torse', 'bras_g', 'pli_coude_g', 'avbras_g', 'bras_d', 'avbras_d', 'jambe_g', 'jambe_d', 'pied_g', 'pied_d']
 
 
 def main():

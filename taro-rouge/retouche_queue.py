@@ -5,7 +5,8 @@ import numpy as np
 from scipy import ndimage as ndi
 
 # bord gauche du trait (fourrure brune a gauche), mesure sur le dessin d'origine, repere scene
-BORD_TRIANGLE = [(383, 760), (389, 772), (394, 784), (398, 796), (403, 808), (405, 816)]
+BORD_TRIANGLE = [(371, 736), (377, 748), (383, 760), (389, 772), (394, 784), (398, 796), (403, 808), (405, 816)]
+# (au-dessus de y=754, sous le trait de la joue : le trait continue, pas de corne de fourrure quand la tete bouge)
 LARGEUR_TRAIT = 20.0
 
 
@@ -31,10 +32,59 @@ def borde_triangle(Q):
     col = np.where(ink[..., None], F, Q[..., :3]) * (1 - cov) + enc * cov
     Q[..., :3] = np.where(gauche[..., None], col, Q[..., :3])
     Q[..., :3] = np.where(droite[..., None], enc, Q[..., :3])
+    # au-dessus du triangle, sous le trait de la joue (cache au repos) : tout est noir a droite du bord, jusqu'au
+    # contour de la queue ; si la tete bouge, on voit le prolongement du trait de joue, pas une corne de fourrure
+    haut_ = opaque & (yy >= 734) & (yy < 762) & (xx <= 445) & (s >= 1.5)
+    Q[..., :3] = np.where(haut_[..., None], enc, Q[..., :3])
     return Q
 
 
-BOITE_BOUCHON = (370, 740, 464, 836)
+BOITE_BOUCHON = (362, 728, 464, 836)
+
+
+def nettoie_haut(Q):
+    """Partie de la queue cachee sous la joue au repos, qui se voit quand la tete se souleve (cri) : coin rentrant
+    du contour sans encoche, et sans petits traits egares sur la fourrure."""
+    from tete import push_pull
+    from pieces import encre_de, lum
+    N = Q.shape[0]
+    yy, xx = np.mgrid[0:N, 0:N]
+    # coin rentrant entre l'arc exterieur et le bord bas : on le referme a l'encre
+    coin = (xx >= 418) & (xx < 452) & (yy >= 748) & (yy < 782)
+    plein = Q[..., 3] > 0.5
+    ferme = ndi.binary_closing(plein, structure=np.ones((3, 3)), iterations=4)
+    neuf = (ferme & ~plein & coin) | (coin & ferme & (Q[..., 3] > 0.02) & (Q[..., 3] < 0.995) & (lum(Q) < 0.3))
+    enc = np.median(Q[..., :3][encre_de(Q, 0.30) & plein & coin], axis=0) if (encre_de(Q, 0.30) & plein & coin).any() else np.array([0.06, 0.02, 0.02])
+    Q[..., :3] = np.where(neuf[..., None], enc, Q[..., :3])
+    Q[..., 3] = np.where(neuf, 1.0, Q[..., 3])
+    # trait egare sous la joue (repere a la main)
+    egare = (xx >= 394) & (xx < 408) & (yy >= 749) & (yy < 760) & (lum(Q) < 0.345) & plein
+    if egare.any():
+        z = ndi.binary_dilation(egare, iterations=1) & plein
+        src = plein & ~z & (lum(Q) >= 0.345) & ndi.binary_dilation(z, iterations=8)
+        F = push_pull(Q[..., :3], src.astype(np.float32), niveaux=3)
+        Q[..., :3] = np.where(z[..., None], F, Q[..., :3])
+    # petits traits sombres isoles sur la fourrure (restes de l'ancien raccord)
+    zone = (xx >= 370) & (xx < 470) & (yy >= 730) & (yy < 830)
+    fourrure = np.median(lum(Q)[plein & zone & (lum(Q) > 0.2)])
+    sombre = (lum(Q) < fourrure - 0.04) & plein & zone
+    grand = encre_de(Q, 0.30) & plein
+    lab, n = ndi.label(sombre)
+    if n:
+        tailles = ndi.sum(sombre, lab, np.arange(1, n + 1))
+        petits = np.isin(lab, 1 + np.nonzero(tailles < 60)[0])
+        # pas les bouts du vrai contour (colles a une grande masse d'encre)
+        lab_g, n_g = ndi.label(grand)
+        if n_g:
+            tg = ndi.sum(grand, lab_g, np.arange(1, n_g + 1))
+            gros = np.isin(lab_g, 1 + np.nonzero(tg >= 200)[0])
+            petits &= ~ndi.binary_dilation(gros, iterations=2)
+        if petits.any():
+            z = ndi.binary_dilation(petits, iterations=2) & plein
+            src = plein & ~z & ~ndi.binary_dilation(lum(Q) < fourrure - 0.04, iterations=2) & ndi.binary_dilation(z, iterations=12)
+            F = push_pull(Q[..., :3], src.astype(np.float32), niveaux=4)
+            Q[..., :3] = np.where(z[..., None], F, Q[..., :3])
+    return Q
 
 
 def bouchon(Q):
@@ -52,9 +102,18 @@ def bouchon(Q):
     trou = boite & (Q[..., 3] < 0.5) & ferme
     d_ext = ndi.distance_transform_edt(ferme)
     bande = (s >= -3) & (s < LARGEUR_TRAIT + 4) & (yy >= ys[0] - 4) & (yy <= ys[-1] + 14)
-    R = (ndi.binary_dilation(trou, iterations=12) | bande) & boite & ((d_ext > 19) | trou)
+    d_trou = ndi.distance_transform_edt(~trou)
+    # l'anneau d'encre du bas du trou est aussi bouche (il touche presque le bord de la queue a cet endroit)
+    R = (ndi.binary_dilation(trou, iterations=12) | bande) & boite & ((d_ext > 19) | trou | ((d_trou <= 10) & (yy > 785)))
+    # la bande noire posee au-dessus du triangle (sous le trait de la joue) est bouchee aussi
+    R |= boite & (yy >= 730) & (yy < 764) & (xx <= 445) & (s >= -3) & (Q[..., 3] > 0.5) & (d_ext > 19)
+    # le bord adouci du bouchon tombe sur la fourrure, pas sur l'encre de l'anneau du trou
+    R |= ndi.binary_dilation(R & (Q[..., :3].mean(-1) < 0.3), iterations=4) & boite & (d_ext > 19)
     ink = encre_de(Q, 0.30)
-    src = (Q[..., 3] > 0.9) & ~ndi.binary_dilation(ink, iterations=2) & ~R & ndi.binary_dilation(R, iterations=30)
+    from pieces import lum
+    voisins = (Q[..., 3] > 0.9) & ~R & ndi.binary_dilation(R, iterations=30)
+    fourrure = np.median(lum(Q)[voisins & ~ink])
+    src = voisins & ~ndi.binary_dilation(ink | (lum(Q) < fourrure - 0.04), iterations=2)
     F = push_pull(Q[..., :3], src.astype(np.float32), niveaux=6)
     import cv2
     F = cv2.GaussianBlur(F, (0, 0), 2.0)
@@ -78,6 +137,7 @@ if __name__ == '__main__':
     Q = np.zeros((1254, 1254, 4), np.float32)
     Q[i['y']:i['y'] + i['h'], i['x']:i['x'] + i['w']] = a
     borde_triangle(Q)
+    nettoie_haut(Q)
     P.sauve_rgba(Q[i['y']:i['y'] + i['h'], i['x']:i['x'] + i['w']], 'rig/queue.png')
     crop, x, y = P.recadre(Q)
     P.sauve_rgba(crop, f'{P.OUT}/queue.png')

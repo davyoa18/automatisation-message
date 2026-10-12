@@ -43,9 +43,10 @@ Python 3 (numpy, scipy, opencv, Pillow), plus Node avec lottie-web et playwright
 - `node render.js livrable/taro_rouge_crie.json sortie/ all 600` : rend les images d'une animation.
 - `python3 qa.py …` puis `python3 qa_trous.py` : contrôles sur `out/qa/`.
 
-## SSH Vibecode (VS Code, Remote-SSH)
+## SSH Vibecode (l'app Talkana est sur Vibecode)
 
-- Hôte `vibecode`.
-- HostName `01a08ad0-4be9-70b6-aebb-3d00b0eb8a00.vibecodeapp.io`.
-- Utilisateur `vibecode`, port 2222 : à confirmer dans Vibecode.
-- Clé privée dans `~/.ssh/vibecode_cloud`, uniquement sur l'ordinateur. Ne jamais la coller dans une conversation.
+- Depuis le Mac : `ssh vibecode` (alias dans `~/.ssh/config`).
+- HostName `01a08ad0-4be9-70b6-aebb-3d00b0eb8a00.vibecodeapp.io`, port 2222, utilisateur `vibecode` (confirmés).
+- La clé est installée sur Vibecode ; la clé privée reste dans `~/.ssh/vibecode_cloud`, uniquement sur le Mac. Ne jamais
+  la coller dans une conversation.
+- Pour copier les Lottie dans l'app : `scp -r taro-rouge/livrable vibecode:<dossier de l'app>/` (ou `rsync`).

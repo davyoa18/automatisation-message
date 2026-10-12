@@ -29,3 +29,14 @@ for nom in ('attente', 'crie', 'pleure', 'explose', 'bascule', 'calme'):
                 continue
             autres.append((t, int(len(xs)), int(p[0]), int(p[1])))
     print(nom, len(autres), autres[:8])
+
+
+# rien ne doit toucher le bord du cadre (coupe nette par le cadre du Lottie)
+for nom in ('attente', 'crie', 'pleure', 'explose', 'bascule', 'calme'):
+    hors = []
+    for f in sorted(os.listdir(f'out/qa/{nom}')):
+        a = np.asarray(Image.open(f'out/qa/{nom}/{f}').convert('RGBA'))[..., 3]
+        bords = [int((a[0] > 20).sum()), int((a[-1] > 20).sum()), int((a[:, 0] > 20).sum()), int((a[:, -1] > 20).sum())]
+        if sum(bords):
+            hors.append((int(f[1:5]), bords))
+    print('cadre', nom, len(hors), hors[:8])

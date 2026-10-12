@@ -233,9 +233,13 @@ def explose():
     sauts = [(22, 30, 37, 165), (40, 47, 53, 125), (56, 61, 66, 80)]
     tl.k('root.p', 0, (0, 0)).k('root.p', 22, (0, 0), 'sortie')
     for (td, ta, tt, h) in sauts:
+        if td > 22:
+            # sauts 2 et 3 : il reste au sol jusqu'a l'impulsion (pas de rebond d'une seule image), et se tasse avant
+            tl.k('root.p', td, (0, 0), 'sortie')
+            tl.k('root.s', td, (1.04, 0.96), 'doux')
         tl.k('root.p', ta, (0, -h), 'entree')
         tl.k('root.p', tt, (0, 0), 'sortie' if tt < 66 else 'doux')
-        tl.k('root.s', td + 3, (0.9, 1.13), 'sortie')
+        tl.k('root.s', td + 3, (0.9, 1.13) if td == 22 else (0.94, 1.08), 'doux')
         tl.k('root.s', ta, (0.98, 1.03), 'entree')
         tl.k('root.s', tt - 1, (0.94, 1.07), 'sortie')
         tl.k('root.s', tt + 1, (1.15, 0.85), 'sortie')
@@ -367,6 +371,7 @@ def _avec_corps(f):
         tl = f()
         CA.TOUS[f.__name__](tl)
         CA.plante_pieds(tl, f.__name__)
+        CA.garde_cadre(tl, f.__name__)
         CA.bouchon_queue(tl, f.__name__)
         return tl
     g.__name__ = f.__name__

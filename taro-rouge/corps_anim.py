@@ -487,4 +487,25 @@ def plante_pieds(tl, nom):
     return tl
 
 
+HAUTS_TETE = [(829.0, 32.0), (302.0, 192.0), (566.0, 109.0)]   # haut de l'oreille droite, de la gauche, du crane
+MARGE_CADRE = 10.0
+
+
+def garde_cadre(tl, nom):
+    """Rien ne sort par le haut du cadre : quand les epaules montent (buste etire), la tete rentre dans les epaules
+    juste assez pour que les oreilles restent a MARGE_CADRE px du bord (courbe lissee, pas de saccade)."""
+    from scipy.ndimage import grey_dilation, gaussian_filter1d
+    import taro_rig as TR
+    D = tl.duree
+    dec = 0.0 if nom == 'attente' else 418.0
+    ymin = np.array([min(TR.monde(tl, p, t)[1] for p in HAUTS_TETE) + dec for t in range(D + 1)])
+    d = np.maximum(0.0, MARGE_CADRE - ymin)
+    if d.max() <= 0:
+        return tl
+    lisse = gaussian_filter1d(grey_dilation(d, size=7, mode='nearest'), 2.0, mode='nearest')
+    d = np.maximum(d, lisse)
+    ajoute(tl, 'tete.p', lambda t: (0.0, float(d[t])))
+    return tl
+
+
 TOUS = {'attente': attente, 'crie': crie, 'pleure': pleure, 'explose': explose, 'bascule': bascule, 'calme': calme}

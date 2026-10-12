@@ -324,6 +324,8 @@ def bascule():
     tl.seq('bouche', [(0, 'moue'), (10, 'grr', 'doux'), (40, 'grr', 'doux'), (48, 'moue'), (60, 'moue')])
     tl.seq('bouche.s', [(0, (1, 1)), (26, (1, 1)), (28, (1.15, 0.9), 'sortie'), (36, (1, 1)), (60, (1, 1))])
     tl.dents = [(0, 0), (10, 1), (46, 0)]
+    # l'expression change d'un coup au debut du balayage : clignement fache, puis le rouge monte
+    tl.oeil(6, 'clos').oeil(7, 'mi').oeil(9, 'base')
     tl.oeil(26, 'plisse').oeil(30, 'base')
     blink(tl, 52)
     tl.seq('oreille_g.r', [(0, 0), (24, 0), (27, -15, 'sortie'), (32, 4.5), (38, -1.5), (44, 0), (60, 0)])
@@ -333,8 +335,9 @@ def bascule():
     for o, dirn, g in ((OREILLE_G, (-0.6, -1.0), 91), (OREILLE_D, (0.64, -1.0), 92)):
         tl.fx.append(FX.jet_vapeur(o, dirn, 27, n=3, ecart=2, duree=19, r=44, portee=190, graine=g, place='devant'))
     tl.fx.append(FX.veine(VEINE_POS, 27, 54, battements=(36, 45), echelle=0.72))
-    tl.fx.append(FX.bouffee(NEZ_G, (548, 668), 46, 13, r=13, taille_max=1.15, rot=-20))
-    tl.fx.append(FX.bouffee(NEZ_D, (872, 630), 46, 13, r=13, taille_max=1.15, rot=15))
+    # bouffees du « hmpf » : elles partent vers le bas et l'exterieur et se dissipent vite (pas sous les yeux)
+    tl.fx.append(FX.bouffee(NEZ_G, (560, 740), 46, 10, r=13, taille_max=1.15, rot=-20))
+    tl.fx.append(FX.bouffee(NEZ_D, (860, 715), 46, 10, r=13, taille_max=1.15, rot=15))
     return tl
 
 
@@ -355,6 +358,8 @@ def calme():
     for c in ('g', 'd'):
         tl.seq(f'sourcil_{c}.p', [(0, (0, 0)), (12, (0, -6), 'doux'), (24, (0, -10)), (56, (0, 0))])
     tl.oeil(12, 'mi')
+    # yeux fermes au bout du soupir, le visage normal rouvre les yeux a la fin du balayage (36)
+    tl.oeil(33, 'clos')
     tl.oeil(40, 'base')
     tl.seq('oreille_g.r', [(0, 0), (11, 3), (30, -9, 'doux'), (42, 1.5), (50, 0), (56, 0)])
     tl.seq('oreille_d.r', [(0, 0), (11, -3), (30, 9, 'doux'), (42, -1.5), (50, 0), (56, 0)])

@@ -362,7 +362,7 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
 
     # --- bascule normal <-> rouge : le Taro normal recouvre le Taro rouge au-dessus d'une ligne ondulee
     #     (repere de la tete) qui monte (normal -> rouge) ou descend (rouge -> normal)
-    sur_visage, sur_oreille = [], {'g': [], 'd': []}
+    sur_visage, sous_traits, sur_oreille = [], [], {'g': [], 'd': []}
     if tl.remplissage:
         ta, tb, sens = tl.remplissage
         fin_overlay = op if sens == 'descend' else t0 + tb + 1
@@ -377,17 +377,28 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
                 continue
             keys.append((t, ligne_cle(t), 'lin'))
             t += pas
-        def matte_ligne(nom_):
-            m = L.calque_forme(nm(nom_), I(), ip, fin_overlay, [L.groupe('zone', [
-                L.trace(chemin_prop(keys, None, t0)), L.rempli((1, 1, 1))])], parent=i_tete)
+        def matte_ligne(nom_, deb=None, fin=None):
+            m = L.calque_forme(nm(nom_), I(), ip if deb is None else deb, fin_overlay if fin is None else fin,
+                               [L.groupe('zone', [L.trace(chemin_prop(keys, None, t0)), L.rempli((1, 1, 1))])],
+                               parent=i_tete)
             m['td'] = 1
             return m
-        def normal(nom_, parent):
+        def normal(nom_, parent, deb=None, fin=None):
             c = img(nom_, parent)
-            c['op'] = fin_overlay
+            if deb is not None:
+                c['ip'] = deb
+            c['op'] = fin_overlay if fin is None else fin
             c['tt'] = 1
             return c
-        sur_visage = [matte_ligne('remplissage_tete'), normal('tete_normal', i_tete)]
+        # les traits ne sont jamais coupes par la ligne : le visage normal complet (ses yeux, sa bouche) n'existe
+        # qu'avant le balayage (bascule) ou apres (retour au calme) ; pendant, la peau normale sans traits est sous
+        # la ligne et les traits faches sont poses dessus, entiers
+        if sens == 'monte':
+            a_deb, a_fin, c_deb, c_fin = ip, t0 + ta, t0 + ta, fin_overlay
+        else:
+            a_deb, a_fin, c_deb, c_fin = t0 + tb, op, ip, t0 + tb
+        sur_visage = [matte_ligne('remplissage_tete', a_deb, a_fin), normal('tete_normal', i_tete, a_deb, a_fin)]
+        sous_traits = [matte_ligne('remplissage_tete_nu', c_deb, c_fin), normal('tete_normal_nu', i_tete, c_deb, c_fin)]
         for cote, i_o in (('g', i_og), ('d', i_od)):
             sur_oreille[cote] = [matte_ligne(f'remplissage_oreille_{cote}'), normal(f'oreille_{cote}_normal', i_o)]
 
@@ -412,6 +423,7 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
     pile += sous_bouche
     pile.append(sourcils)
     pile += yeux
+    pile += sous_traits
     if rage_o is not None:
         pile.append(img('tete_rage', i_tete, o=rage_o))
     pile.append(img('tete_rouge', i_tete))

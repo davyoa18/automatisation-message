@@ -169,7 +169,7 @@ HAUT_JAMBE = 100.0    # de l'axe de tassement (entrejambe -> coin haut de la jam
 
 def pieds(tl, D, fg, fd):
     """fg / fd : t -> (hauteur du pied en px, angle de pointe en degres, glissement x). Le short se tasse avec le
-    pied (le genou monte vers nous) : son ourlet remonte de 60 % de la hauteur, la chaussure reste visible ;
+    pied (le genou monte vers nous) : son ourlet remonte de 80 % de la hauteur, la chaussure reste visible ;
     l'entrejambe ne bouge pas (pivot a sa hauteur, pas d'elargissement)."""
     for cote, f, sg in (('g', fg, 1), ('d', fd, -1)):
         for t in range(D + 1):
@@ -177,7 +177,7 @@ def pieds(tl, D, fg, fd):
             tl.k(f'pied_{cote}.p', t, (float(dx), float(-h)), 'lin')
             tl.k(f'pied_{cote}.r', t, float(sg * a), 'lin')
             tl.k(f'jambe_{cote}.r', t, float(sg * 0.05 * h), 'lin')
-            sy = 1 - 0.6 * h / HAUT_JAMBE
+            sy = 1 - 0.8 * h / HAUT_JAMBE
             tl.k(f'jambe_{cote}.s', t, (1.0, float(sy)), 'lin')
 
 
@@ -219,7 +219,7 @@ def attente(tl):
     canal(tl, D, 'torse.p', lambda t: (-4.0 * poids(t), -1.5 * hm['g'](t) + 2.0 * tasse(t) + 3.5 * choc(t)
                                        - 1.5 * leve(t)))
     canal(tl, D, 'torse.r', lambda t: -0.7 * poids(t) + 0.35 * choc(t))
-    pieds(tl, D, lambda t: (0.0, 0.0, 0.0), lambda t: (14.0 * tape(t), 3.0 * tape(t), 2.0 * tape(t)))
+    pieds(tl, D, lambda t: (0.0, 0.0, 0.0), lambda t: (19.0 * tape(t), 4.0 * tape(t), 2.0 * tape(t)))
     return tl
 
 
@@ -272,7 +272,7 @@ def pleure(tl):
         dt = 0 if c == 'g' else 1
         if c == 'g':
             ep_r = lambda t: -2.0 * poitrine(t) + 2.5 * insp(t) + 2.0 * arme(t) - 1.0 * brai(t)
-            libre = lambda t: (-38.0 * poitrine(t) + 9.0 * arme(t) * poitrine(t) - 6.0 * frappe_p(t) * poitrine(t)
+            libre = lambda t: (-38.0 * poitrine(t) + 14.0 * arme(t) * poitrine(t) - 9.0 * frappe_p(t) * poitrine(t)
                                + 7.0 * cloche(t, 88, 92, 100))
         else:
             ep_r = lambda t: -(2.5 * insp(t - 1) - 1.0 * brai(t)) - 0.8 * cloche(t, 86, 92, 104)
@@ -291,7 +291,7 @@ def pleure(tl):
     hg = lambda t: sum(a * frappe(t, ts + 2, 4, 0, 1) for ts, a in kg)
     hd = lambda t: sum(a * frappe(t, ts + 2, 4, 0, 1) for ts, a in kd)
     canal(tl, D, 'torse.p', lambda t: (0.0, -1.5 * (hg(t) + hd(t)) + 3.0 * frappe_p(t)))
-    pieds(tl, D, lambda t: (14.0 * hg(t), 3.0 * hg(t), -3.0 * hg(t)), lambda t: (14.0 * hd(t), 3.0 * hd(t), 3.0 * hd(t)))
+    pieds(tl, D, lambda t: (19.0 * hg(t), 4.0 * hg(t), -3.0 * hg(t)), lambda t: (19.0 * hd(t), 4.0 * hd(t), 3.0 * hd(t)))
     return tl
 
 
@@ -370,6 +370,11 @@ def bascule(tl):
     canal(tl, D, 'torse.r', lambda t: vibre(t, 0.12 + 0.3 * max(0.0, (t - 8) / 18.0), 33) * cloche(t, 8, 22, 27, 'lin', 'sortie'))
     hop = lambda t: cloche(t, 26, 28, 31, 'sortie', 'entree')
     pieds(tl, D, lambda t: (10.0 * hop(t), 2.0 * hop(t), -1.5 * hop(t)), lambda t: (10.0 * hop(t), 2.0 * hop(t), 1.5 * hop(t)))
+    # « hmpf » final : il souffle par le nez (46), les epaules retombent d'un coup puis il se redresse, boudeur
+    hmpf = lambda t: cloche(t, 44, 47, 57, 'sortie', 'doux')
+    ajoute(tl, 'torse.s', lambda t: (0.006 * hmpf(t), -0.03 * hmpf(t) + 0.012 * cloche(t, 40, 44, 47, 'doux', 'entree')))
+    ajoute(tl, 'torse.r', lambda t: -0.6 * hmpf(t))
+    ajoute(tl, 'torse.p', lambda t: (0.0, 3.0 * hmpf(t)))
     return tl
 
 
@@ -391,7 +396,9 @@ def calme(tl):
                                     (33, (0.998, 1.012)), (40, (1, 1)), (56, (1, 1))]))
     canal(tl, D, 'torse.p', courbe([(0, (0, 0)), (11, (0, -2), 'doux'), (26, (0, 3), 'doux'), (33, (0, 0)), (56, (0, 0))]))
     saut = lambda t: cloche(t, 30, 33, 36, 'sortie', 'entree')
-    pieds(tl, D, lambda t: (6.0 * saut(t), 1.5 * saut(t), 0.0), lambda t: (6.0 * saut(t), 1.5 * saut(t), 0.0))
+    # petit sautillement soulage : tout le corps decolle (les pieds ne quittent pas le corps)
+    pieds(tl, D, lambda t: (0.0, 1.0 * saut(t), 0.0), lambda t: (0.0, 1.0 * saut(t), 0.0))
+    ajoute(tl, 'root.p', lambda t: (0.0, -9.0 * saut(t)))
     return tl
 
 
@@ -456,6 +463,11 @@ def plante_pieds(tl, nom):
             h = -float(np.atleast_1d(tl.eval(f'pied_{c}.p', t))[1])
             w[c] = float(np.clip(1.0 - h / 4.0, 0.0, 1.0))
         poids.append(w)
+    from scipy.ndimage import gaussian_filter1d
+    for c in ('g', 'd'):
+        lis = gaussian_filter1d(np.array([w[c] for w in poids]), 1.2, mode='nearest')
+        for t in range(D + 1):
+            poids[t][c] = float(min(poids[t][c], lis[t]) if poids[t][c] < 1 else lis[t])
     # deux pieds au sol : une translation ne peut pas les planter tous les deux ; l'inclinaison et l'elargissement
     # du corps entier passent au buste (plafonnes : au-dela, la taille du sweat decouvre le haut du short)
     rr = [float(tl.eval('root.r', t)[0]) for t in range(D + 1)]

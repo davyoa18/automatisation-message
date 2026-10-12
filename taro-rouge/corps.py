@@ -744,7 +744,34 @@ def pieces_corps():
     separe_hanche_g(out, T, ink0)
     raccord_coude_g(out)
     lisse_bord_rabat_g(out)
+    liseré_ourlet(out, T)
     return out
+
+
+def liseré_ourlet(out, T):
+    """Bord bas du trait d'ourlet du short, contre la chaussure : les pixels d'anticrenelage (encre + brun) etaient
+    a la chaussure, si bien que le trait de la jambe finissait sur une marche nette des que la chaussure glissait
+    dessous. Ils passent a la jambe en encre transparente ; la chaussure recoit dessous son brun propre."""
+    from tete import push_pull
+    E = np.array(ENCRE, np.float32)
+    yy = np.mgrid[0:N, 0:N][0]
+    for c in ('g', 'd'):
+        Lg, Pd = out[f'jambe_{c}'], out[f'pied_{c}']
+        enc = (Lg[..., 3] > 0.5) & (lum(Lg) < 0.15)
+        rim = (Lg[..., 3] < 0.5) & ndi.binary_dilation(enc, iterations=2) & (Pd[..., 3] > 0.5) & (yy > 1095)
+        if not rim.any():
+            continue
+        src = (Pd[..., 3] > 0.9) & ~ndi.binary_dilation(rim | (lum(Pd) < 0.25), iterations=1)
+        brun = push_pull(Pd[..., :3], src.astype(np.float32), niveaux=5)
+        O = T[..., :3]
+        d = brun - E
+        a = np.clip(((brun - O) * d).sum(-1) / np.maximum((d * d).sum(-1), 1e-4), 0, 1)
+        resid = np.linalg.norm(O - (brun - a[..., None] * d), axis=-1)
+        ok = rim & (a > 0.03) & (resid < 0.12)
+        Lg[..., :3] = np.where(ok[..., None], E, Lg[..., :3])
+        Lg[..., 3] = np.where(ok, a, Lg[..., 3])
+        Pd[..., :3] = np.where(ok[..., None], brun, Pd[..., :3])
+        DEBUG[f'lisere_ourlet_{c}'] = int(ok.sum())
 
 
 # bord gauche du rabat de capuche gauche, le long du petit triangle sous la joue : decoupe nette (pas
@@ -752,9 +779,18 @@ def pieces_corps():
 FEN_RABAT_TRIANGLE = (414, 752, 452, 812)
 
 
+# flanc gauche du sweat, contre la queue (elle le borde quand elle remonte dans « crie »)
+FEN_FLANC_G_QUEUE = (392, 940, 452, 1066)
+
+
 def lisse_bord_rabat_g(out):
-    C = out['capuche_avant']
-    x0, y0, x1, y1 = FEN_RABAT_TRIANGLE
+    lisse_bord(out, 'capuche_avant', FEN_RABAT_TRIANGLE)
+    lisse_bord(out, 'torse', FEN_FLANC_G_QUEUE)
+
+
+def lisse_bord(out, nom, fen_):
+    C = out[nom]
+    x0, y0, x1, y1 = fen_
     a = C[y0 - 4:y1 + 4, x0 - 4:x1 + 4, 3]
     m = (a > 0.5).astype(np.float32)
     b = cv2.GaussianBlur(m, (0, 0), 1.2)

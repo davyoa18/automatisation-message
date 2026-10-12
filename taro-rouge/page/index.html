@@ -171,15 +171,17 @@ table.carte-r td b{color:var(--encre);font-weight:600}
     <dl class="chiffres">
       <dt>532</dt><dd>images rendues et contrôlées une à une (les six animations en entier)</dd>
       <dt>0</dt><dd>bord découpé visible sur Taro : chaque bord du dessin est un trait d'encre</dd>
-      <dt>0</dt><dd>trou dans le corps ; les seuls jours de fond sont ceux du dessin d'origine (sous le menton, entre la queue et la joue quand il lève la tête)</dd>
-      <dt>36 px</dt><dd>de marge minimale avec le bord du cadre (vapeur au sommet du saut), rien n'est coupé</dd>
+      <dt>0</dt><dd>trou dans le corps ; en mode rouge, le petit triangle sous la joue est comblé ; seul jour de fond : entre la queue, la joue et l'épaule quand il lève la tête pour crier</dd>
+      <dt>9 px</dt><dd>de marge minimale avec le bord du cadre (oreille pendant les tapes de l'attente), rien n'est coupé</dd>
     </dl>
     <p><b>Corps articulé</b> : le torse d'origine (une seule image figée) est découpé en bras, avant-bras avec poing,
     torse, jambes et chaussures, chacun complété là où il était caché (flancs du sweat sous les bras, dessous du bras,
-    haut des jambes sous l'ourlet). Au repos, la superposition redonne exactement le dessin.</p>
+    haut des jambes sous l'ourlet). Au repos, la superposition redonne exactement le dessin. Poings sur les hanches, les bras
+    suivent le buste sans glisser ; le pied d'appui reste planté ; le short se tasse quand le pied monte, son ourlet garde son trait.</p>
     <p>Les pièces d'origine étaient coupées là où l'idle les cachait. Elles ont été <b>reconstruites entières</b> avant toute animation,
-    puis une carte de visibilité a vérifié chaque zone qui ne se découvre qu'en mouvement. Dernières corrections : encoche du haut de la queue,
-    jonctions oreilles / tête redevenues fidèles à l'original, larmes refaites (naissance en perle, gouttes en éventail, écoulement par le menton).</p>
+    puis une carte de visibilité a vérifié chaque zone qui ne se découvre qu'en mouvement. Dernières corrections, après plusieurs revues
+    image par image : la bascule ne coupe plus jamais les yeux ni la bouche (l'expression change d'un coup, puis le rouge monte),
+    la tête rentre dans les épaules au lieu de sortir du cadre, poing replié et raccords taille / short refaits, dos de la queue repeint.</p>
   </section>
   <section class="note">
     <h2>Pour l'intégrer dans l'app</h2>
@@ -203,13 +205,13 @@ table.carte-r td b{color:var(--encre);font-weight:600}
   <section class="note">
     <h2>Les fichiers Lottie</h2>
     <ul class="fichiers">
-      <li><code>taro_rouge_attente.json</code><span>1,0 Mo · boucle</span></li>
-      <li><code>taro_rouge_crie.json</code><span>1,3 Mo · 2,7 s</span></li>
-      <li><code>taro_rouge_pleure.json</code><span>1,1 Mo · 3,5 s</span></li>
-      <li><code>taro_rouge_explose.json</code><span>1,5 Mo · 3,8 s</span></li>
-      <li><code>taro_rouge_bascule.json</code><span>1,4 Mo · 2,0 s</span></li>
-      <li><code>taro_rouge_calme.json</code><span>1,3 Mo · 1,9 s</span></li>
-      <li><code>taro_rouge_reactions.json</code><span>2,6 Mo · les cinq</span></li>
+      <li><code>taro_rouge_attente.json</code><span>1,4 Mo · boucle</span></li>
+      <li><code>taro_rouge_crie.json</code><span>1,6 Mo · 2,7 s</span></li>
+      <li><code>taro_rouge_pleure.json</code><span>1,5 Mo · 3,5 s</span></li>
+      <li><code>taro_rouge_explose.json</code><span>1,8 Mo · 3,8 s</span></li>
+      <li><code>taro_rouge_bascule.json</code><span>2,0 Mo · 2,0 s</span></li>
+      <li><code>taro_rouge_calme.json</code><span>1,9 Mo · 1,9 s</span></li>
+      <li><code>taro_rouge_reactions.json</code><span>3,9 Mo · les cinq</span></li>
     </ul>
     <p style="margin-top:10px">Format bodymovin 5.7, images intégrées, compatible lottie-web et lottie-ios. Rouge, sourcils, bouches,
     larmes, vapeur et veine sont vectoriels : ils restent nets à toutes les tailles.</p>

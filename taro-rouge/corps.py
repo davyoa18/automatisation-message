@@ -849,7 +849,8 @@ def raccord_coude_g(out, r=20):
             A[m] = 0.0
     # 1. liseré exterieur -> encre en transparence (sur tout le bord du bras gauche, qui se replie)
     for nom in ('avbras_g', 'bras_g', 'jambe_g', 'jambe_d'):
-        DEBUG[f'lise_{nom}'] = demele_bord(out, nom)
+        # l'avant-bras gauche se replie loin de sa place : tout son lisere devient de l'encre transparente
+        DEBUG[f'lise_{nom}'] = demele_bord(out, nom, ecart_max=0.25 if nom == 'avbras_g' else 0.08)
     # couleur d'encre sous les pixels transparents du bord (pas de bavure orange au reechantillonnage)
     A[..., :3] = np.where((fen & (A[..., 3] < 0.02))[..., None], E, A[..., :3])
     # 3. raccord arrondi (fermeture en niveaux de gris de la couverture, dans la fenetre du cran)
@@ -1015,7 +1016,8 @@ def zones_jambes(T):
     # monte et que le short se tasse, la chaussure glisse dessous sans amincir le trait ni montrer sa coupe
     for k in (1, 2):
         cle = ('pied_g', 'pied_d')[k - 1]
-        ourlet = zone_enc & (dist['short'] + dist[cle] <= 19.0) & (proche == k)
+        # (bouts de l'ourlet compris : tout trait a moins d'une epaisseur d'ourlet du tissu du short)
+        ourlet = zone_enc & ((dist['short'] + dist[cle] <= 19.0) | (dist['short'] <= 17.0)) & (proche == k)
         proche = np.where(ourlet, 0, proche)
     short = short_f | (zone_enc & (proche == 0))
     pied_g = pg_f | (zone_enc & (proche == 1))

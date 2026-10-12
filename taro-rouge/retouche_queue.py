@@ -143,6 +143,71 @@ def bouchon(Q):
     return B
 
 
+# dos de la queue cache sous la joue (il se decouvre quand la tete se leve, dans « crie ») : la reconstruction
+# lisse y faisait une plaque boueuse ; on y prolonge les rayures de la queue (brun en haut, bande beige) en
+# suivant leur direction, avec le grain de la peinture
+ANGLE_RAYURES = 24.0
+LARGEUR_OMBRE_JOUE = 34
+
+
+def prolonge_rayures(Q):
+    """Repeint le dos cache de la queue (H) et la bande d'ombre peinte sous la joue (B, visible au repos) en
+    prolongeant les rayures depuis plus loin ; renvoie le calque d'ombre de la joue (noir transparent sur B) qui,
+    accroche a la tete, redonne exactement le dessin au repos et suit la joue quand la tete bouge."""
+    import cv2
+    import production as P
+    from pieces import encre_de, grain, lum
+    N = Q.shape[0]
+    fin = json.load(open(f'{P.OUT}/pieces.json'))
+    i = fin['masque_tete']
+    from PIL import Image
+    m = np.asarray(Image.open(f'{P.OUT}/masque_tete.png').convert('RGBA')).astype(np.float32)[..., 3] / 255
+    M = np.zeros((N, N), np.float32); M[i['y']:i['y'] + i['h'], i['x']:i['x'] + i['w']] = m
+    yy, xx = np.mgrid[0:N, 0:N]
+    op = Q[..., 3] > 0.5
+    d_ext = ndi.distance_transform_edt(op)
+    ink = ndi.binary_dilation(encre_de(Q, 0.30), iterations=2)
+    tete = M > 0.5
+    boite = (xx > 200) & (xx < 470) & (yy > 560) & (yy < 800)
+    H = op & ndi.binary_erosion(tete, iterations=3) & (d_ext > 24) & boite
+    B = op & ~tete & (ndi.distance_transform_edt(~tete) <= LARGEUR_OMBRE_JOUE) & (d_ext > 24) & ~ink & boite & (xx < 396)
+    Z = H | B | (op & tete & ~ink & (d_ext > 24) & boite & ndi.binary_dilation(H | B, iterations=3))
+    src = op & ~Z & (d_ext > 24) & ~ink
+    th = np.radians(ANGLE_RAYURES)
+    v = np.array([-np.cos(th), np.sin(th)])
+    ys, xs = np.nonzero(Z)
+    F = Q[..., :3].copy()
+    for y, x in zip(ys, xs):
+        acc, t = [], 1
+        while t < 320 and len(acc) < 2:
+            px, py = int(round(x + v[0] * t)), int(round(y + v[1] * t))
+            if 0 <= px < N and 0 <= py < N and src[py, px]:
+                acc.append(Q[py, px, :3]); t += 4
+                continue
+            t += 1
+        if acc:
+            F[y, x] = np.mean(acc, 0)
+    F = np.where(Z[..., None], cv2.GaussianBlur(F, (0, 0), 0.9), Q[..., :3])
+    F = F + grain(Q.shape, 0.012, 91, flou=1.0)[..., None] * np.array([1.0, 0.9, 0.8], np.float32) * Z[..., None]
+    w = np.clip(ndi.distance_transform_edt(Z) / 4.0, 0, 1)[..., None]
+    avant = Q[..., :3].copy()
+    Q[..., :3] = Q[..., :3] * (1 - w) + F * w
+    # ombre de la joue : noir transparent a tel que (1 - a) * nouveau = dessin d'origine (sur la partie visible) ;
+    # la ou ce n'est pas possible (rayure deplacee, teinte differente), on garde le dessin d'origine
+    vis = Z & ~tete
+    nv = Q[..., :3]
+    a = np.clip(1.0 - (avant * nv).sum(-1) / np.maximum((nv * nv).sum(-1), 1e-4), 0, 1)
+    resid = np.linalg.norm(avant - (1 - a[..., None]) * nv, axis=-1)
+    garde = vis & (resid > 0.04)
+    Q[..., :3] = np.where(garde[..., None], avant, Q[..., :3])
+    a = np.where(vis & ~garde, a, 0.0).astype(np.float32)
+    a = np.where(a < 0.015, 0.0, a)
+    O = np.zeros_like(Q)
+    O[..., :3] = np.array(ENCRE_Q, np.float32)
+    O[..., 3] = a
+    return O
+
+
 # fente de fond entre joue, queue et epaule aux atterrissages de « explose » (la tete tasse vibre et laisse
 # une fente d'1 image) : bande d'encre sous la queue, a droite de son bord, jamais visible au repos
 BOITE_FENTE = (434, 738, 471, 777)
@@ -171,6 +236,7 @@ if __name__ == '__main__':
     Q[i['y']:i['y'] + i['h'], i['x']:i['x'] + i['w']] = a
     borde_triangle(Q)
     nettoie_haut(Q)
+    O = prolonge_rayures(Q)
     P.sauve_rgba(Q[i['y']:i['y'] + i['h'], i['x']:i['x'] + i['w']], 'rig/queue.png')
     crop, x, y = P.recadre(Q)
     P.sauve_rgba(crop, f'{P.OUT}/queue.png')
@@ -181,6 +247,9 @@ if __name__ == '__main__':
     crop, x, y = P.recadre(B)
     P.sauve_rgba(crop, f'{P.OUT}/queue_bouchon.png')
     fin['queue_bouchon'] = {'x': x, 'y': y, 'w': int(crop.shape[1]), 'h': int(crop.shape[0])}
+    crop, x, y = P.recadre(O)
+    P.sauve_rgba(crop, f'{P.OUT}/ombre_joue.png')
+    fin['ombre_joue'] = {'x': x, 'y': y, 'w': int(crop.shape[1]), 'h': int(crop.shape[0])}
     Bf = encre_fente(Q)
     crop, x, y = P.recadre(Bf)
     P.sauve_rgba(crop, f'{P.OUT}/queue_encre.png')

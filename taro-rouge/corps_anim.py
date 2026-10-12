@@ -436,6 +436,8 @@ def bouchon_queue(tl, nom):
 
 
 CONTACT = {'g': np.array((517.0, 1196.0)), 'd': np.array((872.0, 1194.0))}   # milieu des semelles au repos
+R_BUSTE_MAX = 1.5      # degres d'inclinaison du corps passes au buste quand les deux pieds sont au sol
+SX_BUSTE_MAX = 0.03    # elargissement passe au buste
 
 
 def plante_pieds(tl, nom):
@@ -447,13 +449,33 @@ def plante_pieds(tl, nom):
         return tl
     from taro_rig import _M, PIV_ROOT
     D = tl.duree
-    base = [np.atleast_1d(tl.eval('root.p', t)).astype(float) for t in range(D + 1)]
-    tl.ch['root.p'] = []
+    poids = []
     for t in range(D + 1):
         w = {}
         for c in ('g', 'd'):
             h = -float(np.atleast_1d(tl.eval(f'pied_{c}.p', t))[1])
             w[c] = float(np.clip(1.0 - h / 4.0, 0.0, 1.0))
+        poids.append(w)
+    # deux pieds au sol : une translation ne peut pas les planter tous les deux ; l'inclinaison et l'elargissement
+    # du corps entier passent au buste (plafonnes : au-dela, la taille du sweat decouvre le haut du short)
+    rr = [float(tl.eval('root.r', t)[0]) for t in range(D + 1)]
+    rs = [np.atleast_1d(tl.eval('root.s', t)).astype(float) for t in range(D + 1)]
+    tr = [float(tl.eval('torse.r', t)[0]) for t in range(D + 1)]
+    ts = [np.atleast_1d(tl.eval('torse.s', t)).astype(float) for t in range(D + 1)]
+    for c in ('root.r', 'root.s', 'torse.r', 'torse.s'):
+        tl.ch[c] = []
+    for t in range(D + 1):
+        wb = poids[t]['g'] * poids[t]['d']
+        dr = wb * float(np.clip(rr[t], -R_BUSTE_MAX, R_BUSTE_MAX))
+        de = wb * float(np.clip(rs[t][0] - 1.0, -SX_BUSTE_MAX, SX_BUSTE_MAX))
+        tl.k('root.r', t, rr[t] - dr, 'lin')
+        tl.k('root.s', t, (float(rs[t][0] - de), float(rs[t][1])), 'lin')
+        tl.k('torse.r', t, tr[t] + dr, 'lin')
+        tl.k('torse.s', t, (float(ts[t][0] * (1.0 + de)), float(ts[t][1])), 'lin')
+    base = [np.atleast_1d(tl.eval('root.p', t)).astype(float) for t in range(D + 1)]
+    tl.ch['root.p'] = []
+    for t in range(D + 1):
+        w = poids[t]
         if w['g'] + w['d'] < 1e-6:
             tl.k('root.p', t, tuple(float(x) for x in base[t]), 'lin')
             continue

@@ -441,6 +441,13 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
         L.ks(p={'a': 0, 'k': [PIV_QUEUE[0], PIV_QUEUE[1], 0]}, a={'a': 0, 'k': [PIV_QUEUE[0], PIV_QUEUE[1], 0]},
              r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)), parent=i_torse))
     # bouchon de fourrure sur le petit triangle de fond : visible seulement quand la queue ou la tete bougent beaucoup
+    # ombre de la joue sur la queue : suit la tete, masquee par la queue (track matte alpha)
+    m_q = img('queue', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0))
+    m_q['nm'] = nm('matte_ombre_joue')
+    m_q['td'] = 1
+    o_j = img('ombre_joue', i_tete)
+    o_j['tt'] = 1
+    pile += [m_q, o_j]
     pile.append(img('queue_bouchon', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0),
                     o=o_prop(C['bouchon'], t0)))
     pile.append(img('queue', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)))

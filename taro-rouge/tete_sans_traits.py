@@ -11,7 +11,7 @@ from tete import push_pull
 
 # boites des traits (repere scene) : oeil gauche, oeil droit, sourcil gauche, sourcil droit, bouche
 BOITES = {'oeil_g': (390, 408, 612, 642), 'oeil_d': (742, 356, 942, 572), 'sourcil_g': (432, 300, 535, 366),
-          'sourcil_d': (722, 248, 812, 300), 'bouche': (636, 564, 782, 682)}
+          'sourcil_d': (722, 248, 812, 300), 'bouche': (628, 571, 792, 692)}
 
 
 def main():
@@ -31,7 +31,8 @@ def main():
             # blanc de l'oeil, iris, reflets et contour de l'oeil (plus sombres que le masque brun)
             m = b & ((L > 0.80) & (sat < 0.15) | (L < 0.22))
         elif nom == 'bouche':
-            m = b & ((L < 0.25) | ((rgb[..., 0] > 0.8) & (rgb[..., 1] < 0.65)))
+            # tout ce qui n'est pas la creme du museau : traits de la bouche (meme pales), langue
+            m = b & ((L < 0.62) | ((rgb[..., 0] > 0.8) & (rgb[..., 1] < 0.7)))
         else:
             m = b & (L < 0.30)
         lab, n = ndi.label(m)

@@ -291,7 +291,7 @@ def pleure(tl):
     hg = lambda t: sum(a * frappe(t, ts + 2, 4, 0, 1) for ts, a in kg)
     hd = lambda t: sum(a * frappe(t, ts + 2, 4, 0, 1) for ts, a in kd)
     canal(tl, D, 'torse.p', lambda t: (0.0, -1.5 * (hg(t) + hd(t)) + 3.0 * frappe_p(t)))
-    pieds(tl, D, lambda t: (19.0 * hg(t), 4.0 * hg(t), -3.0 * hg(t)), lambda t: (19.0 * hd(t), 4.0 * hd(t), 3.0 * hd(t)))
+    pieds(tl, D, lambda t: (25.0 * hg(t), 5.0 * hg(t), -3.0 * hg(t)), lambda t: (25.0 * hd(t), 5.0 * hd(t), 3.0 * hd(t)))
     return tl
 
 
@@ -398,7 +398,8 @@ def calme(tl):
     saut = lambda t: cloche(t, 30, 33, 36, 'sortie', 'entree')
     # petit sautillement soulage : tout le corps decolle (les pieds ne quittent pas le corps)
     pieds(tl, D, lambda t: (0.0, 1.0 * saut(t), 0.0), lambda t: (0.0, 1.0 * saut(t), 0.0))
-    ajoute(tl, 'root.p', lambda t: (0.0, -9.0 * saut(t)))
+    ajoute(tl, 'root.p', lambda t: (0.0, -18.0 * saut(t)))
+    ajoute(tl, 'torse.s', lambda t: (-0.006 * saut(t), 0.025 * saut(t)))
     return tl
 
 

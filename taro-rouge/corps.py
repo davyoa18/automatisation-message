@@ -745,7 +745,27 @@ def pieces_corps():
     raccord_coude_g(out)
     lisse_bord_rabat_g(out)
     liseré_ourlet(out, T)
+    joint_taille(out, T)
     return out
+
+
+# raccords exterieurs bas du sweat / haut du short (le buste penche et se tasse au-dessus des jambes)
+FEN_TAILLE = {'d': (895, 1022, 982, 1080), 'g': (392, 1022, 472, 1080)}
+
+
+def joint_taille(out, T):
+    """Sous le coin bas du sweat, la jambe recoit une copie du trait d'origine (cachee par le sweat au repos) : quand
+    le buste penche ou se tasse, on voit du trait au raccord au lieu d'une fente de fond."""
+    yy, xx = np.mgrid[0:N, 0:N]
+    ink = encre_de(T, 0.30) & (T[..., 3] > 0.5)
+    for c, (x0, y0, x1, y1) in FEN_TAILLE.items():
+        J = out[f'jambe_{c}']
+        fen = (xx >= x0) & (xx < x1) & (yy >= y0) & (yy < y1)
+        pres = ndi.binary_dilation(J[..., 3] > 0.5, iterations=12)
+        ajout = fen & ink & (J[..., 3] < 0.5) & pres & (out['torse'][..., 3] > 0.9)
+        J[..., :3] = np.where(ajout[..., None], T[..., :3], J[..., :3])
+        J[..., 3] = np.where(ajout, T[..., 3], J[..., 3])
+        DEBUG[f'joint_taille_{c}'] = int(ajout.sum())
 
 
 def liseré_ourlet(out, T):

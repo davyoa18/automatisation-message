@@ -177,8 +177,11 @@ def pleure():
             p0 = monde(tl, coin, tp)
             # en eventail : une vers le haut, une a l'horizontale, une entre les deux (lisibles une par une)
             for j, (vx, vy, du, r) in enumerate(((10.0, -19.0, 18, 18), (22.0, -8.0, 15, 15), (16.0, -13.0, 14, 12))):
-                tl.fx.append(FX.goutte(p0 + np.array([sx * 60.0, -18.0]), (sx * vx * a, vy * a),
-                                       tp + 2 * j, du, r=r))
+                # les gouttes ne survivent pas a la reouverture des yeux (84)
+                du = min(du, 85 - (tp + 2 * j))
+                if du >= 4:
+                    tl.fx.append(FX.goutte(p0 + np.array([sx * 60.0, -18.0]), (sx * vx * a, vy * a),
+                                           tp + 2 * j, du, r=r))
     tremble(tl, 'oreille_g.r', 14, 80, 2.5, 2.5, 4, base=lambda t: -16, graine=21, e='doux')
     tremble(tl, 'oreille_d.r', 14, 80, 2.5, 2.5, 4, base=lambda t: 16, graine=22, e='doux')
     tl.fx.append(FX.flots_larmes([COIN_G, COIN_D], 10, 76, 84))     # partis avant que les yeux se rouvrent
@@ -272,7 +275,7 @@ def explose():
             tl.fx.append(FX.jet_vapeur(o, dirn, td + 2, n=4, ecart=2, duree=20, r=48 - 7 * j, portee=190 - 25 * j,
                                        graine=50 + j * 3 + (o == OREILLE_D), place='devant'))
     tl.fx.append(FX.veine(VEINE_POS, 8, 92, battements=(16, 26, 38, 50, 62, 74), echelle=0.8))
-    tl.fx.append(FX.traits_cri(CENTRE_TETE, [(24, 7), (32, 7), (42, 7), (50, 7), (58, 7)], n=8, r1=380, r2=455, graine=41))
+    tl.fx.append(FX.traits_cri(CENTRE_TETE, [(24, 7), (32, 7), (42, 7), (50, 7), (58, 7)], n=8, r1=365, r2=425, graine=41))
     # 66-112 : halete, la vapeur retombe, la couleur redescend
     tl.seq('root.s', [(70, (1.02, 0.98)), (76, (0.985, 1.02)), (82, (1.015, 0.985)), (88, (0.99, 1.012)),
                       (95, (1.006, 0.994)), (102, (0.998, 1.003)), (112, (1, 1))])
@@ -336,8 +339,8 @@ def bascule():
         tl.fx.append(FX.jet_vapeur(o, dirn, 27, n=3, ecart=2, duree=19, r=44, portee=190, graine=g, place='devant'))
     tl.fx.append(FX.veine(VEINE_POS, 27, 54, battements=(36, 45), echelle=0.72))
     # bouffees du « hmpf » : elles partent vers le bas et l'exterieur et se dissipent vite (pas sous les yeux)
-    tl.fx.append(FX.bouffee(NEZ_G, (560, 740), 46, 10, r=13, taille_max=1.15, rot=-20))
-    tl.fx.append(FX.bouffee(NEZ_D, (860, 715), 46, 10, r=13, taille_max=1.15, rot=15))
+    tl.fx.append(FX.bouffee(NEZ_G, (672, 592), 46, 9, r=14, taille_max=1.35, rot=-20))
+    tl.fx.append(FX.bouffee(NEZ_D, (750, 586), 46, 9, r=14, taille_max=1.35, rot=15))
     return tl
 
 

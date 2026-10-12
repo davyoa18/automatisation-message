@@ -10,7 +10,7 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 INFO = json.load(open(f'{ICI}/final/pieces.json'))
 ETATS_YEUX = ['base', 'plisse', 'mi', 'clos', 'serres', 'fous']
 
-PIV_ROOT = (624.0, 1190.0)
+PIV_ROOT = (624.0, 1196.0)
 PIV_TETE = (700.0, 760.0)
 PIV_OREILLE = {'g': (352.0, 352.0), 'd': (826.0, 214.0)}
 PIV_QUEUE = (480.0, 940.0)

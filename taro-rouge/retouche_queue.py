@@ -125,20 +125,21 @@ def bouchon(Q):
     fondu = np.clip((s + 3.0) / 3.0, 0, 1)
     # bord lisse et anticrenele (le bouchon est visible en permanence en mode rouge : pas de dents de scie contre
     # le trait noir)
-    # a droite et en bas du trou, le bouchon s'arrete sur le bord d'encre d'origine du triangle (anticrenele) : la
-    # fourrure remplit le triangle, son contour reste celui du dessin ; ailleurs (bande du bord de queue a gauche,
-    # bande noire au-dessus), bord lisse
+    # a droite et en bas du trou, le bouchon s'arrete sur le bord d'encre d'origine du triangle : dans l'anneau du
+    # trou, il porte le bord de la queue compose sur la fourrure (opaque : le blanc de l'anticrenelage d'origine ne
+    # transparait plus) ; ailleurs (bande du bord de queue a gauche, bande noire au-dessus), bord lisse
     lignes = np.nonzero(trou.any(1))[0]
     haut_trou = lignes.min() if len(lignes) else N
-    garde = R & ((s < LARGEUR_TRAIT + 4) | (yy < haut_trou))
+    garde = R   # la fourrure couvre aussi l'anneau d'encre du triangle (sinon son contour reapparait quand la tete monte)
     Rs = cv2.GaussianBlur(garde.astype(np.float32), (0, 0), 1.5)
-    Rl = np.clip((Rs - 0.5) * 2.5 + 0.5, 0, 1) * (Rs > 0.02)
-    creux = np.clip(1.0 - Q[..., 3], 0, 1) * ndi.binary_dilation(trou, iterations=3)
-    Rl = np.maximum(Rl, creux)
-    B[..., 3] = Rl * np.where(bande & ~ndi.binary_dilation(trou, iterations=12), fondu, 1.0)
-    # le trou lui-meme est bouche a 100 % (sinon le fond transparait au bord du trou, contre le contour)
-    plein_trou = ndi.binary_erosion(trou, iterations=1)
-    B[..., 3] = np.where(plein_trou, 1.0, B[..., 3])
+    A1 = np.clip((Rs - 0.5) * 2.5 + 0.5, 0, 1) * (Rs > 0.02)
+    A1 = A1 * np.where(bande & ~ndi.binary_dilation(trou, iterations=12), fondu, 1.0)
+    H = ndi.binary_dilation(trou, iterations=3)
+    Qa = Q[..., 3:4]
+    bord = Q[..., :3] * Qa + F * (1 - Qa)
+    melange = A1[..., None] * F + (1 - A1[..., None]) * bord
+    B[..., :3] = np.where(H[..., None], melange, F)
+    B[..., 3] = np.where(H, 1.0, A1)
     return B
 
 

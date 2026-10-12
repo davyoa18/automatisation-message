@@ -366,6 +366,7 @@ def _avec_corps(f):
     def g():
         tl = f()
         CA.TOUS[f.__name__](tl)
+        CA.plante_pieds(tl, f.__name__)
         CA.bouchon_queue(tl, f.__name__)
         return tl
     g.__name__ = f.__name__

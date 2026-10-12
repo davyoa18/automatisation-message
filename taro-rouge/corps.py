@@ -743,7 +743,29 @@ def pieces_corps():
     separe_pli_coude_g(out, zg)
     separe_hanche_g(out, T, ink0)
     raccord_coude_g(out)
+    lisse_bord_rabat_g(out)
     return out
+
+
+# bord gauche du rabat de capuche gauche, le long du petit triangle sous la joue : decoupe nette (pas
+# d'anticrenelage) qui, en mode rouge, borde la fourrure qui comble le triangle
+FEN_RABAT_TRIANGLE = (414, 752, 452, 812)
+
+
+def lisse_bord_rabat_g(out):
+    C = out['capuche_avant']
+    x0, y0, x1, y1 = FEN_RABAT_TRIANGLE
+    a = C[y0 - 4:y1 + 4, x0 - 4:x1 + 4, 3]
+    m = (a > 0.5).astype(np.float32)
+    b = cv2.GaussianBlur(m, (0, 0), 1.2)
+    lisse = np.clip((b - 0.5) * 2.2 + 0.5, 0, 1)
+    fen = np.zeros_like(a, bool); fen[4:-4, 4:-4] = True
+    sombre = lum(C[y0 - 4:y1 + 4, x0 - 4:x1 + 4]) < 0.2
+    # seulement le long de l'encre (le bord du rabat ici est son trait noir)
+    zone = fen & ndi.binary_dilation(m > 0.5, iterations=2) & ndi.binary_dilation(sombre & (m > 0.5), iterations=3)
+    C[y0 - 4:y1 + 4, x0 - 4:x1 + 4, 3] = np.where(zone, lisse, a)
+    rgb = C[y0 - 4:y1 + 4, x0 - 4:x1 + 4, :3]
+    C[y0 - 4:y1 + 4, x0 - 4:x1 + 4, :3] = np.where((zone & (a < 0.5))[..., None], np.array(ENCRE, np.float32), rgb)
 
 
 def separe_hanche_g(out, T, ink0):
@@ -826,7 +848,7 @@ def raccord_coude_g(out, r=20):
         if m.sum() < 12:
             A[m] = 0.0
     # 1. liseré exterieur -> encre en transparence (sur tout le bord du bras gauche, qui se replie)
-    for nom in ('avbras_g', 'bras_g'):
+    for nom in ('avbras_g', 'bras_g', 'jambe_g', 'jambe_d'):
         DEBUG[f'lise_{nom}'] = demele_bord(out, nom)
     # couleur d'encre sous les pixels transparents du bord (pas de bavure orange au reechantillonnage)
     A[..., :3] = np.where((fen & (A[..., 3] < 0.02))[..., None], E, A[..., :3])
@@ -989,6 +1011,12 @@ def zones_jambes(T):
     # l'ourlet du sweat (trait et ombre sombre juste au-dessus) reste en entier au sweat, devant le short
     proche = np.argmin(np.stack([dist['short'] - 3.5, dist['pied_g'], dist['pied_d'], dist['sweat'] - 16.0]), 0)
     zone_enc = ink & bas
+    # le trait de l'ourlet du short (entre le tissu du short et la chaussure) va en entier au short : quand le pied
+    # monte et que le short se tasse, la chaussure glisse dessous sans amincir le trait ni montrer sa coupe
+    for k in (1, 2):
+        cle = ('pied_g', 'pied_d')[k - 1]
+        ourlet = zone_enc & (dist['short'] + dist[cle] <= 19.0) & (proche == k)
+        proche = np.where(ourlet, 0, proche)
     short = short_f | (zone_enc & (proche == 0))
     pied_g = pg_f | (zone_enc & (proche == 1))
     pied_d = pd_f | (zone_enc & (proche == 2))

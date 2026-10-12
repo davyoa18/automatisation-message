@@ -435,4 +435,34 @@ def bouchon_queue(tl, nom):
     return tl
 
 
+CONTACT = {'g': np.array((517.0, 1196.0)), 'd': np.array((872.0, 1194.0))}   # milieu des semelles au repos
+
+
+def plante_pieds(tl, nom):
+    """Pieds plantes : l'etirement, l'elargissement et l'inclinaison du corps entier (root) faisaient glisser et
+    s'enfoncer le pied d'appui. Une translation du corps entier (root.p, aucune piece ne bouge par rapport aux
+    autres) ramene a sa place le point d'appui : la semelle du pied au sol, ou le milieu des deux pieds quand les
+    deux sont au sol (poids lisses selon la hauteur du pied). Pas dans « explose » (sauts)."""
+    if nom == 'explose':
+        return tl
+    from taro_rig import _M, PIV_ROOT
+    D = tl.duree
+    base = [np.atleast_1d(tl.eval('root.p', t)).astype(float) for t in range(D + 1)]
+    tl.ch['root.p'] = []
+    for t in range(D + 1):
+        w = {}
+        for c in ('g', 'd'):
+            h = -float(np.atleast_1d(tl.eval(f'pied_{c}.p', t))[1])
+            w[c] = float(np.clip(1.0 - h / 4.0, 0.0, 1.0))
+        if w['g'] + w['d'] < 1e-6:
+            tl.k('root.p', t, tuple(float(x) for x in base[t]), 'lin')
+            continue
+        C = (w['g'] * CONTACT['g'] + w['d'] * CONTACT['d']) / (w['g'] + w['d'])
+        M0 = _M((0, 0), float(tl.eval('root.r', t)[0]), tl.eval('root.s', t), PIV_ROOT)
+        q = (M0 @ np.array([C[0], C[1], 1.0]))[:2]
+        p = base[t] + (C - q)
+        tl.k('root.p', t, (float(p[0]), float(p[1])), 'lin')
+    return tl
+
+
 TOUS = {'attente': attente, 'crie': crie, 'pleure': pleure, 'explose': explose, 'bascule': bascule, 'calme': calme}

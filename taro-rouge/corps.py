@@ -146,6 +146,7 @@ FEN_HANCHE_G = (395, 950, 480, 1035)
 FEN_HANCHE_D = (860, 925, 995, 1012)
 W_CONTOUR = 17.0
 EP_POING = 16.8          # epaisseur du trait du contour du poing (mesuree au bord exterieur)
+FEN_PLI_G = (540, 850, 606, 920)   # jonction pli du coude / manchette gauche (se voit quand le poing se replie)
 
 
 def hanche(z, ink, fen):
@@ -740,7 +741,107 @@ def pieces_corps():
         Pb[..., :3] = np.where(bande[..., None], T[..., :3], Pb[..., :3])
         Pb[..., 3] = np.where(bande, np.maximum(Pb[..., 3], T[..., 3]), Pb[..., 3])
     separe_pli_coude_g(out, zg)
+    separe_hanche_g(out, T, ink0)
+    raccord_coude_g(out)
     return out
+
+
+def separe_hanche_g(out, T, ink0):
+    """Sous le poing gauche (qui se replie sur la poitrine dans pleure et explose) : le sweat d'origine, avec l'ombre
+    du poing et la couture de la zone repeinte, passe dans un calque qui s'efface avec le pli ; dessous, le sweat
+    est un tissu lisse (pas de plaque a bord net ni d'ombre orpheline quand la main n'est plus la)."""
+    from tete import push_pull
+    Pt = out['torse']
+    yy, xx = np.mgrid[0:N, 0:N]
+    poing = out['avbras_g'][..., 3] > 0.5
+    plein = Pt[..., 3] > 0.5
+    enc = ndi.binary_dilation(lum(Pt) < 0.30, iterations=1)
+    zone = ndi.binary_dilation(poing, iterations=3) & plein & (yy < 1018) & (xx > 452)
+    ref = np.percentile(lum(Pt)[plein & ~enc & ~zone & (yy > 850) & (yy < 1010) & (xx > 600) & (xx < 700)], 50)
+    ombre = ndi.binary_dilation(poing, iterations=26) & plein & ~enc & (lum(Pt) < ref - 0.03) & (yy < 1018)
+    lab, n = ndi.label(ombre)
+    if n:
+        colle = ndi.binary_dilation(zone, iterations=2)
+        ombre = np.isin(lab, [i for i in range(1, n + 1) if (colle & (lab == i)).any()])
+    zone = (zone | ombre) & ~enc
+    zone = ndi.binary_dilation(zone, iterations=4) & plein & ~enc & (yy < 1018) & (xx > 452)
+    ov = np.zeros_like(Pt)
+    ov[zone] = Pt[zone]
+    out['hanche_g'] = ov
+    src = plein & ~enc & ~zone & ndi.binary_dilation(zone, iterations=24) & (lum(Pt) >= ref - 0.03)
+    F = push_pull(Pt[..., :3], src.astype(np.float32), niveaux=6)
+    F = cv2.GaussianBlur(F, (0, 0), 4.0)
+    F = F + grain(Pt.shape, 0.004, 77, flou=1.2)[..., None] * np.array([1.0, 0.92, 0.85], np.float32)
+    Pt[..., :3] = np.where(zone[..., None], F, Pt[..., :3])
+
+
+def demele_bord(out, nom, ecart_max=0.08):
+    """Le liseré exterieur d'une piece (pixels opaques melangeant l'encre du contour et ce qu'il y avait derriere
+    dans le dessin : ombre, sweat, fond) devient de l'encre en transparence, calculee sur ce qu'il y a dessous au
+    repos : le repos est identique, et quand la piece bouge son bord ne traine plus de fil rouge ou brun (pointille
+    dans le noir d'un autre contour). Seuls les pixels qui sont bien un melange encre / dessous sont touches."""
+    import compo_repos
+    A = out[nom]
+    E = np.array(ENCRE, np.float32)
+    a = A[..., 3].copy()
+    L = lum(A)
+    encre = (a > 0.5) & (L < 0.12)
+    corps_ = (a > 0.5) & ~encre
+    lab, n = ndi.label(corps_)
+    tailles = ndi.sum(np.ones_like(a), lab, range(1, n + 1))
+    interieur = lab == (1 + int(np.argmax(tailles)))
+    dehors = ndi.binary_dilation(a < 0.02, iterations=4)
+    cand = (a > 0.02) & ~encre & ~interieur & dehors
+    B = compo_repos.dessous(out, nom)
+    C = A[..., :3]
+    d = B - E
+    al = np.clip(((B - C) * d).sum(-1) / np.maximum((d * d).sum(-1), 1e-4), 0, 1)
+    resid = np.linalg.norm(C - (B - al[..., None] * d), axis=-1)
+    lise = cand & (resid < ecart_max)
+    A[..., :3] = np.where(lise[..., None], E, A[..., :3])
+    A[..., 3] = np.where(lise, al * a, a)
+    return lise
+
+
+# bord exterieur de l'avant-bras gauche pres du coude, et raccord arrondi du haut du poing replie
+FEN_BORD_AVB_G = (505, 850, 592, 916)
+FEN_RACCORD_G = (536, 858, 604, 930)
+
+
+def raccord_coude_g(out, r=20):
+    """Quand le poing gauche se replie, le bord haut de l'avant-bras (cote coude) devient la silhouette :
+    1. le liseré d'ombre rouge-orange colle au trait (melange encre + ombre du coude) devient de l'encre en
+       transparence, recalculee sur ce qu'il y a dessous au repos (repos identique, plus de fil rouge au repli) ;
+    2. eclats isoles retires ;
+    3. le cran entre le trait de la manchette et le contour du poing (comble au repos par le pli doux du haut
+       du bras) est arrondi par un calque d'encre 'raccord_g' qui apparait avec le repli."""
+    A = out['avbras_g']
+    E = np.array(ENCRE, np.float32)
+    x0, y0, x1, y1 = FEN_BORD_AVB_G
+    fen = np.zeros((N, N), bool); fen[y0:y1, x0:x1] = True
+    # 2. eclats isoles
+    lab, n = ndi.label((A[..., 3] > 0.02) & fen)
+    for i in range(1, n + 1):
+        m = lab == i
+        if m.sum() < 12:
+            A[m] = 0.0
+    # 1. liseré exterieur -> encre en transparence (sur tout le bord du bras gauche, qui se replie)
+    for nom in ('avbras_g', 'bras_g'):
+        DEBUG[f'lise_{nom}'] = demele_bord(out, nom)
+    # couleur d'encre sous les pixels transparents du bord (pas de bavure orange au reechantillonnage)
+    A[..., :3] = np.where((fen & (A[..., 3] < 0.02))[..., None], E, A[..., :3])
+    # 3. raccord arrondi (fermeture en niveaux de gris de la couverture, dans la fenetre du cran)
+    x0, y0, x1, y1 = FEN_RACCORD_G
+    m = r + 3
+    c = A[y0 - m:y1 + m, x0 - m:x1 + m, 3].astype(np.float32)
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+    cl = cv2.morphologyEx(c, cv2.MORPH_CLOSE, k)
+    ajout = np.clip((cl - c) / np.maximum(1 - c, 1e-3), 0, 1)
+    ajout[:m, :] = 0; ajout[-m:, :] = 0; ajout[:, :m] = 0; ajout[:, -m:] = 0
+    R = np.zeros_like(A)
+    R[y0 - m:y1 + m, x0 - m:x1 + m, 3] = ajout
+    R[..., :3] = E
+    out['raccord_g'] = R
 
 
 # pli doux du coude gauche (trait du haut du bras) et ombre du coude : calque a part, qui s'efface quand le poing

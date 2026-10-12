@@ -4,6 +4,8 @@ import json
 import numpy as np
 from scipy import ndimage as ndi
 
+ENCRE_Q = (0.075, 0.02, 0.018)
+
 # bord gauche du trait (fourrure brune a gauche), mesure sur le dessin d'origine, repere scene
 BORD_TRIANGLE = [(371, 736), (377, 748), (383, 760), (389, 772), (394, 784), (398, 796), (403, 808), (405, 816)]
 # (au-dessus de y=754, sous le trait de la joue : le trait continue, pas de corne de fourrure quand la tete bouge)
@@ -121,10 +123,40 @@ def bouchon(Q):
     B[..., :3] = F
     # bord gauche (sur la fourrure de la queue) fondu sur 3 px : pas de couture
     fondu = np.clip((s + 3.0) / 3.0, 0, 1)
-    B[..., 3] = cv2.GaussianBlur(R.astype(np.float32), (0, 0), 0.8) * R * np.where(bande & ~ndi.binary_dilation(trou, iterations=12), fondu, 1.0)
+    # bord lisse et anticrenele (le bouchon est visible en permanence en mode rouge : pas de dents de scie contre
+    # le trait noir)
+    # a droite et en bas du trou, le bouchon s'arrete sur le bord d'encre d'origine du triangle (anticrenele) : la
+    # fourrure remplit le triangle, son contour reste celui du dessin ; ailleurs (bande du bord de queue a gauche,
+    # bande noire au-dessus), bord lisse
+    lignes = np.nonzero(trou.any(1))[0]
+    haut_trou = lignes.min() if len(lignes) else N
+    garde = R & ((s < LARGEUR_TRAIT + 4) | (yy < haut_trou))
+    Rs = cv2.GaussianBlur(garde.astype(np.float32), (0, 0), 1.5)
+    Rl = np.clip((Rs - 0.5) * 2.5 + 0.5, 0, 1) * (Rs > 0.02)
+    creux = np.clip(1.0 - Q[..., 3], 0, 1) * ndi.binary_dilation(trou, iterations=3)
+    Rl = np.maximum(Rl, creux)
+    B[..., 3] = Rl * np.where(bande & ~ndi.binary_dilation(trou, iterations=12), fondu, 1.0)
     # le trou lui-meme est bouche a 100 % (sinon le fond transparait au bord du trou, contre le contour)
-    plein_trou = ndi.binary_dilation(trou, iterations=2) & R
+    plein_trou = ndi.binary_erosion(trou, iterations=1)
     B[..., 3] = np.where(plein_trou, 1.0, B[..., 3])
+    return B
+
+
+# fente de fond entre joue, queue et epaule aux atterrissages de « explose » (la tete tasse vibre et laisse
+# une fente d'1 image) : bande d'encre sous la queue, a droite de son bord, jamais visible au repos
+BOITE_FENTE = (434, 738, 471, 777)
+
+
+def encre_fente(Q):
+    N = Q.shape[0]
+    yy, xx = np.mgrid[0:N, 0:N]
+    x0, y0, x1, y1 = BOITE_FENTE
+    op = Q[..., 3] > 0.5
+    ferme = ndi.binary_fill_holes(ndi.binary_closing(op, structure=np.ones((3, 3)), iterations=5))
+    R = (xx >= x0) & (xx < x1) & (yy >= y0) & (yy < y1) & ~ferme
+    B = np.zeros_like(Q)
+    B[..., :3] = ENCRE_Q
+    B[..., 3] = R.astype(np.float32)
     return B
 
 
@@ -148,5 +180,9 @@ if __name__ == '__main__':
     crop, x, y = P.recadre(B)
     P.sauve_rgba(crop, f'{P.OUT}/queue_bouchon.png')
     fin['queue_bouchon'] = {'x': x, 'y': y, 'w': int(crop.shape[1]), 'h': int(crop.shape[0])}
+    Bf = encre_fente(Q)
+    crop, x, y = P.recadre(Bf)
+    P.sauve_rgba(crop, f'{P.OUT}/queue_encre.png')
+    fin['queue_encre'] = {'x': x, 'y': y, 'w': int(crop.shape[1]), 'h': int(crop.shape[0])}
     json.dump(fin, open(f'{P.OUT}/pieces.json', 'w'), indent=1)
     print('queue', fin['queue'], 'bouchon', fin['queue_bouchon'])

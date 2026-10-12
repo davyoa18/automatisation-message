@@ -135,11 +135,13 @@ def bras(tl, D, cote, ep_r, ep_p, libre, w, plus=lambda t: 0.0):
         r = ep_r(t)
         k = _ease((-c_l - 2.0) / 18.0, 'doux')        # 0 pres du repos, 1 bras replie (au-dela de -20)
         a = k * (c_l + pl)
-        r += (1 - k) * 0.6 * pl
-        r = float(ROT_MAX * np.tanh(r / ROT_MAX))
+        # poing sur la hanche (k = 0) : le bras est fige sur le buste (le moindre decalage fait grésiller la
+        # jonction poing / hanche et l'ombre du coude) ; il ne bouge par rapport au buste que replie
+        r = float(k * ROT_MAX * np.tanh(r / ROT_MAX))
+        py = LEVE_MAX * np.tanh(p[1] / LEVE_MAX) if p[1] < 0 else 2.0 * np.tanh(p[1] / 2.0)
         a = float(np.clip(a, -52.0, 0.0))
         tl.k(f'epaule_{cote}.r', t, r, 'lin')
-        tl.k(f'epaule_{cote}.p', t, (float(p[0]), float(LEVE_MAX * np.tanh(p[1] / LEVE_MAX) if p[1] < 0 else 2.0 * np.tanh(p[1] / 2.0))), 'lin')
+        tl.k(f'epaule_{cote}.p', t, (float(k * p[0]), float(k * py)), 'lin')
         tl.k(f'coude_{cote}.r', t, a, 'lin')
         if cote == 'g':
             # le trait du pli et l'ombre du coude disparaissent quand le poing se replie
@@ -241,7 +243,7 @@ def crie(tl):
                                     (21, (1.008, 1.03)), (50, (1.008, 1.025), 'doux'), (56, (0.996, 1.03)),
                                     (62, (1.004, 0.99)), (70, (0.998, 1.012)), (80, (1, 1))]))
     tr = courbe([(0, 0), (13, -1.0, 'sortie'), (16, 1.0), (50, 0.7, 'doux'), (60, -0.4), (80, 0)])
-    canal(tl, D, 'torse.r', lambda t: tr(t) + 0.3 * vibre(t, 1, 7) * cloche(t, 18, 22, 52))
+    canal(tl, D, 'torse.r', lambda t: tr(t) + 0.4 * vibre(t, 1, 7) * cloche(t, 18, 22, 52))
     canal(tl, D, 'torse.p', courbe([(0, (0, 0)), (13, (0, -3), 'entree'), (16, (0, 4)), (20, (0, 1)),
                                     (30, (0, 0), 'entree'), (32, (0, 4)), (36, (0, 1)), (55, (0, 1)), (80, (0, 0))]))
     fd = lambda t: frappe(t, 4, 9, 2, 1)
@@ -303,7 +305,7 @@ def explose(tl):
     poitrine / coudes jetes vers l'exterieur), pieds replies ; a l'atterrissage les epaules et le buste s'ecrasent
     et rebondissent. Il halete, epaules qui se soulevent, puis les poings reviennent sur les hanches."""
     D = tl.duree
-    w = courbe([(0, 1), (22, 1, 'sortie'), (25, 0), (66, 0, 'doux'), (72, 1), (112, 1)])
+    w = courbe([(0, 1), (18, 1, 'sortie'), (22, 0), (66, 0, 'doux'), (72, 1), (112, 1)])   # libre des le 1er saut : pas de pop
     kg = [(0, 0), (22, 0)]
     erg, erd = [(0, 0), (16, 2.5, 'doux')], [(0, 0), (16, -2.5, 'doux')]
     ep = [(0, (0, 0)), (18, (0, -12), 'doux')]
@@ -340,6 +342,7 @@ def explose(tl):
     pf = lambda t: sum(cloche(t, td + 3, ta - 1, tt - 1, 'sortie', 'entree') * (1 - 0.1 * j)
                        for j, (td, ta, tt) in enumerate(SAUTS))
     pieds(tl, D, lambda t: (14.0 * pf(t), 3.0 * pf(t), -3.0 * pf(t)), lambda t: (14.0 * pf(t), 3.0 * pf(t), 3.0 * pf(t)))
+    tl.k('encre_queue', 0, 1.0, 'hold').k('encre_queue', D, 1.0, 'hold')
     return tl
 
 
@@ -364,6 +367,7 @@ def bascule(tl):
                                     (31, (1.012, 0.97)), (35, (0.997, 1.015)), (42, (1, 1)), (60, (1, 1))]))
     canal(tl, D, 'torse.p', courbe([(0, (0, 0)), (6, (0, 0)), (24, (0, 3), 'doux'), (27, (0, -2), 'sortie'),
                                     (31, (0, 4)), (35, (0, 0.5)), (42, (0, 0)), (60, (0, 0))]))
+    canal(tl, D, 'torse.r', lambda t: vibre(t, 0.12 + 0.3 * max(0.0, (t - 8) / 18.0), 33) * cloche(t, 8, 22, 27, 'lin', 'sortie'))
     hop = lambda t: cloche(t, 26, 28, 31, 'sortie', 'entree')
     pieds(tl, D, lambda t: (10.0 * hop(t), 2.0 * hop(t), -1.5 * hop(t)), lambda t: (10.0 * hop(t), 2.0 * hop(t), 1.5 * hop(t)))
     return tl
@@ -393,22 +397,41 @@ def calme(tl):
 
 # ------------------------------------------------------------------ bouchon du petit triangle de fond
 P_TRIANGLE = np.array((420.0, 790.0))
+ROUGES = ('attente', 'crie', 'pleure', 'explose')
+SEUIL_BOUCHON = 6.0
 
 
-def bouchon_queue(tl):
-    """Opacite du bouchon de fourrure (taro_rig) : le triangle de fond entre joue, capuche et queue n'existe qu'au
-    repos ; des que la queue ou la tete s'en ecartent de plus de 10 px, la queue le recouvre (fondu sur 6 px)."""
+def ecart_triangle(tl, t):
+    """Deplacement (px) du petit triangle de fond entre joue, capuche et queue, du a la queue ou a la tete."""
     from taro_rig import PIV_TETE, PIV_QUEUE
     def M(r, s):
         c, sn = np.cos(np.radians(r)), np.sin(np.radians(r))
         return np.array([[c, -sn], [sn, c]]) @ np.diag(s)
-    for t in range(tl.duree + 1):
-        qr, qs = float(tl.eval('queue.r', t)[0]), tl.eval('queue.s', t)
-        tp, tr, ts = tl.eval('tete.p', t), float(tl.eval('tete.r', t)[0]), tl.eval('tete.s', t)
-        pq = np.array(PIV_QUEUE) + M(qr, qs) @ (P_TRIANGLE - PIV_QUEUE)
-        ph = np.array(PIV_TETE) + tp + M(tr, ts) @ (P_TRIANGLE - PIV_TETE)
-        d = max(np.linalg.norm(pq - P_TRIANGLE), np.linalg.norm(ph - P_TRIANGLE))
-        tl.k('bouchon', t, float(np.clip((d - 10.0) / 6.0, 0, 1)), 'lin')
+    qr, qs = float(tl.eval('queue.r', t)[0]), tl.eval('queue.s', t)
+    tp, tr, ts = tl.eval('tete.p', t), float(tl.eval('tete.r', t)[0]), tl.eval('tete.s', t)
+    pq = np.array(PIV_QUEUE) + M(qr, qs) @ (P_TRIANGLE - PIV_QUEUE)
+    ph = np.array(PIV_TETE) + tp + M(tr, ts) @ (P_TRIANGLE - PIV_TETE)
+    return float(max(np.linalg.norm(pq - P_TRIANGLE), np.linalg.norm(ph - P_TRIANGLE)))
+
+
+def bouchon_queue(tl, nom):
+    """Bouchon de fourrure (taro_rig) sur le petit triangle de fond : en mode rouge il est toujours la (le triangle
+    se deforme des que la tete ou la queue bougent : fente blanche, contour qui transparait dans un fondu). Il
+    apparait d'un coup (sans fondu) pendant les secousses de la bascule et disparait pendant le retour au calme,
+    a l'image ou la tete s'est le plus ecartee."""
+    D = tl.duree
+    tl.ch['bouchon'] = []
+    if nom in ROUGES:
+        tl.k('bouchon', 0, 1.0, 'hold').k('bouchon', D, 1.0, 'hold')
+        return tl
+    d = [ecart_triangle(tl, t) for t in range(D + 1)]
+    au_dela = [t for t in range(D + 1) if d[t] > SEUIL_BOUCHON]
+    if nom == 'bascule':
+        ts = au_dela[0] if au_dela else D // 2
+        tl.k('bouchon', 0, 0.0, 'hold').k('bouchon', ts, 1.0, 'hold').k('bouchon', D, 1.0, 'hold')
+    else:
+        ts = au_dela[-1] + 1 if au_dela else D // 2
+        tl.k('bouchon', 0, 1.0, 'hold').k('bouchon', ts, 0.0, 'hold').k('bouchon', D, 0.0, 'hold')
     return tl
 
 

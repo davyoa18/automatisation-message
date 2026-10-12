@@ -366,7 +366,7 @@ def _avec_corps(f):
     def g():
         tl = f()
         CA.TOUS[f.__name__](tl)
-        CA.bouchon_queue(tl)
+        CA.bouchon_queue(tl, f.__name__)
         return tl
     g.__name__ = f.__name__
     return g

@@ -1,5 +1,5 @@
 """Outil de mise au point : dessine des polygones / points (repere scene) sur un zoom quadrille du torse."""
-import os, sys, json
+import sys, json
 import numpy as np
 from PIL import Image, ImageDraw
 

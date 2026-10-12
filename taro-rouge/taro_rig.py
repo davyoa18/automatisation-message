@@ -36,7 +36,7 @@ REPOS = {
     'epaule_g.r': 0, 'epaule_g.p': (0, 0), 'coude_g.r': 0,
     'epaule_d.r': 0, 'epaule_d.p': (0, 0), 'coude_d.r': 0,
     'jambe_g.r': 0, 'jambe_d.r': 0, 'jambe_g.s': (1, 1), 'jambe_d.s': (1, 1), 'pied_g.r': 0, 'pied_d.r': 0, 'pied_g.p': (0, 0), 'pied_d.p': (0, 0),
-    'rage': 0, 'bouchon': 0, 'pli_g': 1,
+    'rage': 0, 'bouchon': 0, 'pli_g': 1, 'encre_queue': 0,
     'sourcil_g': 'colere', 'sourcil_d': 'colere', 'sourcil_g.p': (0, 0), 'sourcil_d.p': (0, 0),
     'plis': 'colere',
     'bouche': 'moue', 'bouche.s': (1, 1), 'bouche.p': (0, 0), 'bouche.r': 0,
@@ -125,9 +125,14 @@ class Timeline:
         pb = []
         for nom, ks in self.ch.items():
             ks = sorted(ks, key=lambda k: k[0])
+            if nom == 'encre_queue':          # calque jamais visible au repos
+                continue
             for t in (0, self.duree):
                 v = self.valeur(nom, t)
                 r = REPOS[nom]
+                if nom == 'bouchon':              # en mode rouge, le petit triangle de fond est bouche
+                    rouge = {'bascule': t > 0, 'calme': t == 0}.get(self.nom, True)
+                    r = 1.0 if rouge else 0.0
                 if isinstance(r, str) or isinstance(v, (str, Chemin)):
                     ok = (v == r)
                 else:
@@ -392,11 +397,15 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
     # corps articule : capuche avant (languettes), bras (chaque avant-bras devant son haut de bras), torse seul
     pile.append(img('corps_capuche_avant', i_torse))
     pile.append(img('corps_avbras_g', i_cg))
+    # raccord arrondi du haut du poing replie (encre) : apparait quand le pli du coude s'efface
+    pile.append(img('corps_raccord_g', i_cg, o=o_prop(C['pli_g'], t0, f=lambda v: 100 * (1 - v)) if C['pli_g'] else {'a': 0, 'k': 0}))
     # pli du coude gauche et ombre du coude : s'effacent quand le poing se replie sur la poitrine
     pile.append(img('corps_pli_coude_g', i_eg, o=o_prop(C['pli_g'], t0) if C['pli_g'] else {'a': 0, 'k': 100}))
     pile.append(img('corps_bras_g', i_eg))
     pile.append(img('corps_avbras_d', i_cd))
     pile.append(img('corps_bras_d', i_ed))
+    # sweat d'origine sous le poing gauche (ombre du poing) : s'efface quand le poing quitte la hanche
+    pile.append(img('corps_hanche_g', i_torse, o=o_prop(C['pli_g'], t0) if C['pli_g'] else {'a': 0, 'k': 100}))
     pile.append(img('corps_torse', i_torse))
     pile += sur_visage
     pile += [contour, matte, interieur]
@@ -435,6 +444,9 @@ def construit(tl, t0, ind0, decalage_scene=(0, 0)):
     pile.append(img('queue_bouchon', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0),
                     o=o_prop(C['bouchon'], t0)))
     pile.append(img('queue', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0)))
+    # encre sous le bord droit de la queue (fente de fond aux atterrissages de « explose » seulement)
+    pile.append(img('queue_encre', i_torse, pivot=PIV_QUEUE, r=r_prop(C['queue.r'], t0), s=s_prop(C['queue.s'], t0),
+                    o=o_prop(C['encre_queue'], t0) if C['encre_queue'] else {'a': 0, 'k': 0}))
     pile.append(img('capuche', i_torse))
     pile += derriere
     pile += nulls

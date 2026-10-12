@@ -49,4 +49,7 @@ Python 3 (numpy, scipy, opencv, Pillow), plus Node avec lottie-web et playwright
 - HostName `01a08ad0-4be9-70b6-aebb-3d00b0eb8a00.vibecodeapp.io`, port 2222, utilisateur `vibecode` (confirmés).
 - La clé est installée sur Vibecode ; la clé privée reste dans `~/.ssh/vibecode_cloud`, uniquement sur le Mac. Ne jamais
   la coller dans une conversation.
+- Si `ssh vibecode` redemande un mot de passe, Vibecode a réécrit `~/.ssh/authorized_keys` : il ne contient plus que sa
+  propre clé « agent » (à garder). Remettre la nôtre depuis le Mac : `ssh-copy-id -i ~/.ssh/vibecode_cloud.pub vibecode`
+  (mot de passe demandé une fois).
 - Pour copier les Lottie dans l'app : `scp -r taro-rouge/livrable vibecode:<dossier de l'app>/` (ou `rsync`).
